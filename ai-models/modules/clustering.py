@@ -1,5 +1,6 @@
 import joblib
 import numpy as np
+import pandas as pd
 import os
 
 
@@ -11,6 +12,9 @@ SCALER_PATH = os.path.join(MODEL_DIR, "kmeans_usage_scaler.pkl")
 # Load once at import
 kmeans = joblib.load(KMEANS_PATH)
 scaler = joblib.load(SCALER_PATH)
+
+# Feature names used during training
+FEATURES = ["daily_screen_time", "session_duration", "app_switches", "night_activity"]
 
 
 # Map Clusters to Usage Groups
@@ -24,6 +28,7 @@ def get_cluster_labels():
     }
 
 cluster_labels = get_cluster_labels()
+
 
 # Prediction Function
 def predict_cluster(user_data):
@@ -40,7 +45,11 @@ def predict_cluster(user_data):
     cluster (int) : raw cluster index
     label (str)   : 'light', 'moderate', or 'heavy'
     """
-    X_scaled = scaler.transform([user_data])
+    # Convert to DataFrame with correct feature names
+    user_df = pd.DataFrame([user_data], columns=FEATURES)
+
+    # Scale and predict
+    X_scaled = scaler.transform(user_df)
     cluster = kmeans.predict(X_scaled)[0]
     label = cluster_labels[cluster]
     return cluster, label
