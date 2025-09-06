@@ -1,0 +1,6 @@
+user_id,daily_screen_time,session_duration,app_switches,night_activity,label
+1,120,10,15,20,0
+2,45,5,5,0,0
+3,300,20,40,60,1
+4,600,30,60,120,1
+5,200,15,25,30,0
