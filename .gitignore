@@ -1,1 +1,14 @@
+# Virtual environment
 ai-models/ml_env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/*
+!.vscode/settings.json   # keep shared project settings if useful
