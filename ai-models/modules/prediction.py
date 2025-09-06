@@ -1,18 +1,20 @@
 import joblib
 import os
 import numpy as np
-
+import pandas as pd
 
 # Load Saved Model
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "trained_models")
 MODEL_PATH = os.path.join(MODEL_DIR, "rf_addiction_pipeline.pkl")
 
-# Load pipeline (Scaler + Random Forest)
+# Load pipeline (Scaler + Random Forest, inside a single pipeline)
 model = joblib.load(MODEL_PATH)
 
-# -------------------------
+# Feature names used during training
+FEATURES = ["daily_screen_time", "session_duration", "app_switches", "night_activity"]
+
+
 # Prediction Function
-# -------------------------
 def predict_addiction(user_data):
     """
     Predicts addiction risk for a new user.
@@ -27,14 +29,15 @@ def predict_addiction(user_data):
     prediction (int) : 0 = healthy, 1 = addicted
     probability (float) : probability of being addicted
     """
-    # Ensure input shape
-    user_array = np.array(user_data).reshape(1, -1)
+    # Convert to DataFrame with correct feature names
+    user_df = pd.DataFrame([user_data], columns=FEATURES)
 
     # Predict label & probability
-    prediction = model.predict(user_array)[0]
-    probability = model.predict_proba(user_array)[0][1]  # probability of class 1
+    prediction = model.predict(user_df)[0]
+    probability = model.predict_proba(user_df)[0][1]  # probability of class 1
 
     return prediction, probability
+
 
 # Example Usage
 if __name__ == "__main__":
