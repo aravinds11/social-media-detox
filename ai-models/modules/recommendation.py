@@ -24,9 +24,11 @@ RECOMMENDATIONS = {
     ]
 }
 
+
 def recommend(user_data):
     """
     Generates detox recommendations based on clustering & addiction prediction.
+    Uses weighted mapping for clustering by default.
 
     Returns
     -------
@@ -54,7 +56,7 @@ def recommend(user_data):
         "suggestions": suggestions
     }
 
+
 if __name__ == "__main__":
     sample_user = [250, 18, 30, 45]
-    result = recommend(sample_user)
-    print(result)
+    print("Recommendation →", recommend(sample_user))
