@@ -1,7 +1,6 @@
-from .clustering import predict_cluster
-from .prediction import predict_addiction
+from modules.clustering import predict_cluster
+from modules.prediction import predict_addiction
 
-# Detox recommendation rules
 RECOMMENDATIONS = {
     "light": [
         "Keep tracking your usage — you’re in a healthy range!",
@@ -29,28 +28,21 @@ def recommend(user_data):
     """
     Generates detox recommendations based on clustering & addiction prediction.
 
-    Parameters
-    ----------
-    user_data : list
-        [daily_screen_time, session_duration, app_switches, night_activity]
-
     Returns
     -------
     dict with:
-        cluster_label (str): light/moderate/heavy
-        addiction_status (str): healthy/addicted
-        probability (float): probability of addiction
-        suggestions (list of str): recommended actions
+        cluster_label (str)
+        addiction_status (str)
+        probability (float)
+        suggestions (list of str)
     """
-    # Get cluster info
-    cluster, cluster_label = predict_cluster(user_data)
+    cluster_result = predict_cluster(user_data)
+    prediction_result = predict_addiction(user_data)
 
-    # Get addiction prediction
-    prediction, probability = predict_addiction(user_data)
-    addiction_status = "Addicted" if prediction == 1 else "Healthy"
+    cluster_label = cluster_result["label"]
+    addiction_status = "Addicted" if prediction_result["prediction"] == 1 else "Healthy"
 
-    # Choose recommendations
-    if prediction == 1:
+    if prediction_result["prediction"] == 1:
         suggestions = RECOMMENDATIONS["addicted"]
     else:
         suggestions = RECOMMENDATIONS[cluster_label]
@@ -58,17 +50,11 @@ def recommend(user_data):
     return {
         "cluster_label": cluster_label,
         "addiction_status": addiction_status,
-        "probability": round(probability, 2),
+        "probability": prediction_result["probability"],
         "suggestions": suggestions
     }
 
-
-# Example usage
 if __name__ == "__main__":
     sample_user = [250, 18, 30, 45]
-    recs = recommend(sample_user)
-    print("Cluster:", recs["cluster_label"])
-    print("Addiction Status:", recs["addiction_status"], f"(p={recs['probability']})")
-    print("Suggestions:")
-    for s in recs["suggestions"]:
-        print(" -", s)
+    result = recommend(sample_user)
+    print(result)
