@@ -48,6 +48,7 @@ def run_tests():
     # Show cluster centers once
     print("Cluster centers:\n", get_cluster_centers(), "\n")
 
+    print("\n Testing AI Modules...\n")
     for user in SAMPLES:
         run_user_test(user)
 
@@ -58,6 +59,6 @@ if __name__ == "__main__":
             custom_user = [float(x) for x in sys.argv[1:5]]
             run_user_test(custom_user)
         except ValueError:
-            print("❌ Invalid input. Please enter 4 numbers: screen_time session_duration app_switches night_activity")
+            print("Invalid input. Please enter 4 numbers: screen_time session_duration app_switches night_activity")
     else:
         run_tests()
