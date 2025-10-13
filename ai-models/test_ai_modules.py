@@ -43,12 +43,12 @@ def run_user_test(user):
 
 def run_tests():
     """Run tests on sample users"""
-    print("\n🔍 Testing AI Modules (Weighted Mapping)...\n")
+    print("\nTesting AI Modules (Weighted Mapping)...\n")
 
     # Show cluster centers once
     print("Cluster centers:\n", get_cluster_centers(), "\n")
 
-    print("\n Testing AI Modules...\n")
+    print("\nTesting AI Modules...\n")
     for user in SAMPLES:
         run_user_test(user)
 
