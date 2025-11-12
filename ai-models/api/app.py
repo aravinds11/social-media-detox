@@ -2,7 +2,6 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import sys, os, traceback
 
-# Add project root to import path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from modules.clustering import predict_cluster, get_personalized_insights
