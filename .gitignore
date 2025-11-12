@@ -27,7 +27,7 @@ instance/
 *.sqlite3
 __pycache__/
 api/__pycache__/
-trained_models/*.pkl   # Optional: ignore if large; keep if essential
+trained_models/*.pkl   
 
 # NODE.JS
 node_modules/
@@ -54,3 +54,7 @@ ios/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Logs
+logs/
+*.log
