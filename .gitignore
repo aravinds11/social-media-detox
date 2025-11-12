@@ -1,14 +1,56 @@
-# Virtual environment
+# PYTHON AND ML ENVIRONMENTS
 ai-models/ml_env/
-
-# Python cache
+venv/
+.env
+*.env
 __pycache__/
 *.py[cod]
 *.pyo
-
-# Jupyter notebooks
+*.pyd
+*.so
+*.egg
+*.egg-info/
+build/
+dist/
+pip-wheel-metadata/
 .ipynb_checkpoints/
+.DS_Store
 
-# VS Code
+# JUPYTER
+*.ipynb_checkpoints
+notebooks/.ipynb_checkpoints/
+
+# FLASK
+*.log
+instance/
+*.db
+*.sqlite3
+__pycache__/
+api/__pycache__/
+trained_models/*.pkl   # Optional: ignore if large; keep if essential
+
+# NODE.JS
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.env.local
+.env.development
+.env.production
+
+# REACT NATIVE / EXPO
+.expo/
+.expo-shared/
+android/
+ios/
+*.apk
+*.aab
+*.keystore
+
+# IDE & OS FILES
 .vscode/*
-!.vscode/settings.json   # keep shared project settings if useful
+!.vscode/settings.json
+.idea/
+Thumbs.db
+.DS_Store
