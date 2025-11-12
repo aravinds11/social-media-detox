@@ -1,25 +1,34 @@
 import express from "express";
 import axios from "axios";
+import auth from "../middleware/auth.js";
+import User from "../models/User.js";
 
 const router = express.Router();
 const FLASK_URL = process.env.FLASK_URL || "http://127.0.0.1:5000";
 
-router.post("/", async (req, res) => {
+router.post("/", auth, async (req, res) => {
   try {
     const { usage } = req.body;
+    if (!usage || usage.length !== 4)
+      return res.status(400).json({ error: true, message: "Usage must have 4 numbers" });
 
-    if (!usage || !Array.isArray(usage) || usage.length !== 4) {
-      return res.status(400).json({
-        error: true,
-        message: "usage must be an array of 4 numbers [screen_time, session_duration, app_switches, night_activity]"
-      });
-    }
+    const flaskRes = await axios.post(`${FLASK_URL}/analyze`, { usage });
 
-    const flaskResponse = await axios.post(`${FLASK_URL}/analyze`, { usage });
-    res.json(flaskResponse.data);
-  } catch (error) {
-    console.error("Flask API error:", error.message);
-    res.status(500).json({ error: true, message: "Error communicating with AI service" });
+    await User.findByIdAndUpdate(req.user.id, {
+      $push: {
+        usageHistory: {
+          usage,
+          cluster: flaskRes.data.cluster,
+          prediction: flaskRes.data.prediction,
+          recommendations: flaskRes.data.recommendations
+        }
+      }
+    });
+
+    res.json(flaskRes.data);
+  } catch (err) {
+    console.error("Analyze error:", err.message);
+    res.status(500).json({ error: true, message: "Internal server error" });
   }
 });
 
