@@ -211,8 +211,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconImageGreen: {
-    width: 32,
-    height: 32,
+    width: 64,
+    height: 64,
     tintColor: COLORS.primaryGreen,
   },
 
@@ -238,8 +238,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   actionBtnIcon: {
-    width: 28,
-    height: 28,
+    width: 34,
+    height: 34,
     tintColor: "#fff",
     marginBottom: 6,
   },
