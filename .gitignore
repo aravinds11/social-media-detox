@@ -1,5 +1,3 @@
-.vscode/
-
 # PYTHON AND ML ENVIRONMENTS
 ai-models/ml_env/
 venv/
@@ -51,6 +49,7 @@ ios/
 *.keystore
 
 # IDE & OS FILES
+.vscode/
 .vscode/*
 !.vscode/settings.json
 .idea/
