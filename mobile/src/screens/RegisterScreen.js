@@ -6,23 +6,67 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
 } from "react-native";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { api } from "../api/api";
 
 export default function RegisterScreen({ navigation }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleRegister() {
+    if (!fullName || !email || !password || !confirmPassword) {
+      Alert.alert("Error", "All fields are required.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await api.post("/auth/register", {
+        name: fullName,
+        email,
+        password,
+      });
+
+      const token = response.data.token;
+
+      // Save token
+      await AsyncStorage.setItem("token", token);
+
+      Alert.alert("Success", "Account created!");
+      navigation.navigate("Analyze");
+
+    } catch (error) {
+      console.log("Register error:", error?.response?.data || error.message);
+
+      if (error?.response?.data?.message === "Email already exists" || error?.response?.data?.message === "User already exists") {
+        Alert.alert("Registration Failed", "This email is already registered.");
+      } else {
+        Alert.alert("Registration Failed", "Could not create your account.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.background} />
 
       <View style={styles.card}>
-        {/* Title */}
         <Text style={styles.title}>Create Account</Text>
 
         {/* Full Name */}
@@ -99,15 +143,19 @@ export default function RegisterScreen({ navigation }) {
         </View>
 
         {/* Register Button */}
-        <TouchableOpacity style={styles.registerButton}>
-          <Text style={styles.registerButtonText}>Register</Text>
+        <TouchableOpacity
+          style={styles.registerButton}
+          onPress={handleRegister}
+        >
+          <Text style={styles.registerButtonText}>
+            {loading ? "Registering..." : "Register"}
+          </Text>
         </TouchableOpacity>
 
-        {/* Terms */}
         <Text style={styles.termsText}>
           By registering, you agree to our{" "}
           <Text style={styles.link}>Terms</Text> &{" "}
-          <Text style={styles.link}>Privacy Policy.</Text>
+          <Text style={styles.link}>Privacy Policy</Text>.
         </Text>
       </View>
     </View>
