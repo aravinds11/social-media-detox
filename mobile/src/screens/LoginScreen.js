@@ -27,18 +27,19 @@ export default function LoginScreen({ navigation }) {
     try {
       setLoading(true);
 
-      const response = await api.post("/auth/login", {
-        email,
-        password,
-      });
+      const response = await api.post("/auth/login", { email, password });
+
+      // console.log("LOGIN RESPONSE:", response.data);
 
       const token = response.data.token;
+      const fullName = response.data.user.name;  
 
-      // Save token
       await AsyncStorage.setItem("token", token);
+      await AsyncStorage.setItem("fullName", fullName);
 
       Alert.alert("Success", "Logged in successfully!");
-      navigation.navigate("Analyze");
+
+      navigation.navigate("Dashboard", { username: fullName });
 
     } catch (error) {
       console.log("Login error:", error?.response?.data || error.message);
@@ -294,3 +295,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+

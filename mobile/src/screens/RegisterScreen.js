@@ -47,7 +47,13 @@ export default function RegisterScreen({ navigation }) {
       await AsyncStorage.setItem("token", token);
 
       Alert.alert("Success", "Account created!");
-      navigation.navigate("Analyze");
+      
+      await AsyncStorage.setItem("fullName", fullName);
+
+      navigation.navigate("Dashboard", {
+      username: fullName,
+      });
+
 
     } catch (error) {
       console.log("Register error:", error?.response?.data || error.message);
