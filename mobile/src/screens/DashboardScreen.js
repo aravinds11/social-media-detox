@@ -213,7 +213,6 @@ const styles = StyleSheet.create({
   iconImageGreen: {
     width: 64,
     height: 64,
-    tintColor: COLORS.primaryGreen,
   },
 
   divider: {
