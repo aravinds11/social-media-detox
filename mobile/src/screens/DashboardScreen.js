@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,11 @@ import {
   Image,
   Dimensions,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { api } from "../api/api";
+
 
 const { width } = Dimensions.get("window");
 
@@ -22,92 +25,128 @@ const COLORS = {
   progressTrack: "#e6eef0",
 };
 
-const SAMPLE_USAGE = [
-  { id: "instagram", label: "Instagram", time: "42m", pct: 0.7, icon: require("../../assets/ig.png") },
-  { id: "youtube", label: "YouTube", time: "1h 10m", pct: 0.55, icon: require("../../assets/yt.png") },
-  { id: "snapchat", label: "Snapchat", time: "12m", pct: 0.35, icon: require("../../assets/sc.png") },
-  { id: "facebook", label: "Facebook", time: "12m", pct: 0.35, icon: require("../../assets/fb.png") },
-  { id: "x", label: "X", time: "12m", pct: 0.35, icon: require("../../assets/x.png") },
-];
-
 export default function DashboardScreen({ navigation, route }) {
-  const username = route?.params?.username || "User";
+  const nameFromRoute = route?.params?.username || "User";
 
-  const anims = useRef(SAMPLE_USAGE.map(() => new Animated.Value(0))).current;
+  const [usageData, setUsageData] = useState([]);
+  const [streak, setStreak] = useState(0);
+  const [coins, setCoins] = useState(0);
+  const [username, setUsername] = useState(nameFromRoute);
+  const [loading, setLoading] = useState(true);
+
+  const anims = useRef([]).current;
 
   useEffect(() => {
-    const animations = anims.map((a, i) =>
-      Animated.timing(a, {
-        toValue: SAMPLE_USAGE[i].pct,
-        duration: 700,
-        delay: 150 * i,
-        useNativeDriver: false,
-      })
-    );
-    Animated.stagger(100, animations).start();
+    fetchDashboardData();
   }, []);
+
+  async function fetchDashboardData() {
+    try {
+      const progressRes = await api.get("/user/progress");
+
+      setStreak(progressRes.data.streak ?? 0);
+      setCoins(progressRes.data.coins ?? 0);
+      setUsername(progressRes.data.name || nameFromRoute);
+
+      const usageRes = await api.get("/usage/apps");
+      const apps = usageRes.data.apps || [];
+
+      setUsageData(apps);
+
+      anims.length = apps.length;
+      apps.forEach((_, i) => (anims[i] = new Animated.Value(0)));
+
+      const animations = apps.map((app, i) =>
+        Animated.timing(anims[i], {
+          toValue: app.pct ?? 0,
+          duration: 700,
+          delay: 150 * i,
+          useNativeDriver: false,
+        })
+      );
+
+      Animated.stagger(100, animations).start();
+    } catch (err) {
+      console.log("Dashboard fetch error:", err);
+    }
+
+    setLoading(false);
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={COLORS.primaryGreen} />
+          <Text style={{ marginTop: 12, color: COLORS.accentText }}>
+            Loading your dashboard...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-
-        {/* Header */}
+        
         <View style={styles.header}>
           <Text style={styles.title}>Welcome Back, {username}</Text>
           <Text style={styles.subtitle}>Stay focused, stay healthy.</Text>
         </View>
 
-        {/* Detox Progress Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Your Detox Progress</Text>
 
           <View style={styles.progressRow}>
-            {/* Streak */}
             <View style={styles.progressItem}>
               <View style={styles.iconCircle}>
                 <Image source={require("../../assets/streak.png")} style={styles.iconImageGreen} />
               </View>
               <View style={{ marginLeft: 12 }}>
-                <Text style={styles.bigNumber}>5 days</Text>
+                <Text style={styles.bigNumber}>{streak} days</Text>
                 <Text style={styles.smallText}>Streak</Text>
               </View>
             </View>
 
             <View style={styles.divider} />
 
-            {/* Coins */}
             <View style={styles.progressItem}>
               <View style={styles.iconCircle}>
                 <Image source={require("../../assets/coin.png")} style={styles.iconImageGreen} />
               </View>
               <View style={{ marginLeft: 12 }}>
-                <Text style={styles.bigNumber}>12</Text>
+                <Text style={styles.bigNumber}>{coins}</Text>
                 <Text style={styles.smallText}>Coins Earned</Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Action Buttons */}
         <View style={styles.actionsRow}>
           <DashboardButton label="Start Timer" icon={require("../../assets/timer.png")} onPress={() => navigation?.navigate?.("Timer")} />
-
           <DashboardButton label="Challenge" icon={require("../../assets/challenge.png")} onPress={() => navigation?.navigate?.("Challenge")} />
-
           <DashboardButton label="Stats" icon={require("../../assets/stats.png")} onPress={() => navigation?.navigate?.("Stats")} />
-
           <DashboardButton label="Profile" icon={require("../../assets/profile.png")} onPress={() => navigation?.navigate?.("Profile")} />
         </View>
 
-        {/* Today's Usage Card */}
         <View style={[styles.card, { marginTop: 18 }]}>
           <Text style={styles.cardTitle}>Today’s Usage</Text>
 
           <View style={{ marginTop: 12 }}>
-            {SAMPLE_USAGE.map((row, i) => (
+            {usageData.length === 0 && (
+              <Text style={{ color: COLORS.muted, textAlign: "center", paddingVertical: 10 }}>
+                No usage data available today.
+              </Text>
+            )}
+
+            {usageData.map((row, i) => (
               <View key={row.id} style={styles.usageRow}>
                 <View style={styles.usageLeft}>
-                  <Image source={row.icon} style={styles.appIcon} />
+                  <Image
+                    source={{ uri: row.iconUrl }}
+                    style={styles.appIcon}
+                  />
                   <Text style={styles.usageTime}>{row.time}</Text>
                 </View>
 

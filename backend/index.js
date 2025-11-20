@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import analyzeRouter from "./routes/analyze.js";
 import authRouter from "./routes/auth.js";
+import usageRouter from "./routes/usage.js";
+import userRouter from "./routes/user.js";
 
 dotenv.config();
 
@@ -22,6 +24,9 @@ app.get("/health", (req, res) => {
 
 app.use("/api/analyze", analyzeRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/usage", usageRouter);
+app.use("/api/user", userRouter);
+
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, "0.0.0.0", () =>
