@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   Animated,
+  AppState,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../api/api";
@@ -43,6 +44,21 @@ export default function TimerScreen() {
   const [lastCoins, setLastCoins] = useState(0);
 
   const intervalRef = useRef(null);
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", nextState => {
+      if (
+        appState.current.match(/active/) &&
+        nextState.match(/inactive|background/)
+      ) {
+        if (running) pauseTimer();
+      }
+      appState.current = nextState;
+    });
+
+    return () => subscription.remove();
+  }, [running]);
 
   function triggerRewardAnimation(coins) {
     setLastCoins(coins);
@@ -64,7 +80,6 @@ export default function TimerScreen() {
 
     try {
       await api.post("/user/add-coins", { coins: coinsEarned });
-
       triggerRewardAnimation(coinsEarned);
       setShowConfetti(true);
     } catch (err) {
@@ -80,17 +95,20 @@ export default function TimerScreen() {
   function startTimer() {
     if (running) return;
 
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     setRunning(true);
 
     intervalRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
+      setSecondsLeft(prev => {
         if (prev <= 1) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
           setRunning(false);
-
           awardCoins(initialDuration);
-
           return 0;
         }
         return prev - 1;
@@ -100,7 +118,10 @@ export default function TimerScreen() {
 
   function pauseTimer() {
     setRunning(false);
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
   }
 
   useEffect(() => {
@@ -129,7 +150,6 @@ export default function TimerScreen() {
     pauseTimer();
     setInitialDuration(total);
     setSecondsLeft(total);
-
     setCustomMin("");
     setCustomSec("");
     setModalVisible(false);
@@ -156,9 +176,8 @@ export default function TimerScreen() {
           Ready to start your detox? Put your device away and relax.
         </Text>
 
-        {/* PRESETS */}
         <View style={styles.presetsRow}>
-          {PRESETS.map((p) => {
+          {PRESETS.map(p => {
             const total = p.minutes * 60 + p.seconds;
             const selected = initialDuration === total;
 
@@ -188,7 +207,6 @@ export default function TimerScreen() {
             );
           })}
 
-          {/* CUSTOM BUTTON */}
           <TouchableOpacity
             style={styles.customBtn}
             disabled={running}
@@ -198,26 +216,31 @@ export default function TimerScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* START / PAUSE */}
-        {!running ? (
-          <TouchableOpacity style={styles.startButton} onPress={startTimer}>
-            <Text style={styles.startText}>Start</Text>
-          </TouchableOpacity>
-        ) : (
+        {running && (
           <TouchableOpacity style={styles.stopButton} onPress={pauseTimer}>
             <Text style={styles.stopText}>Pause</Text>
           </TouchableOpacity>
         )}
 
-        {/* RESET */}
-        {!running && secondsLeft !== initialDuration && (
+        {!running && secondsLeft === initialDuration && (
+          <TouchableOpacity style={styles.startButton} onPress={startTimer}>
+            <Text style={styles.startText}>Start</Text>
+          </TouchableOpacity>
+        )}
+
+        {!running && secondsLeft < initialDuration && secondsLeft > 0 && (
+          <TouchableOpacity style={styles.resumeButton} onPress={startTimer}>
+            <Text style={styles.resumeText}>Resume</Text>
+          </TouchableOpacity>
+        )}
+
+        {!running && secondsLeft < initialDuration && (
           <TouchableOpacity style={styles.resetButton} onPress={resetTimer}>
             <Text style={styles.resetText}>Reset</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* REWARD POPUP */}
       {rewardVisible && (
         <Animated.View
           style={{
@@ -251,14 +274,19 @@ export default function TimerScreen() {
               source={require("../../assets/coin.png")}
               style={{ width: 32, height: 32, marginRight: 10 }}
             />
-            <Text style={{ fontSize: 22, fontWeight: "700", color: COLORS.primary }}>
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: "700",
+                color: COLORS.primary,
+              }}
+            >
               +{lastCoins} coins!
             </Text>
           </View>
         </Animated.View>
       )}
 
-      {/* CONFETTI */}
       {showConfetti && (
         <ConfettiCannon
           count={120}
@@ -271,7 +299,6 @@ export default function TimerScreen() {
         />
       )}
 
-      {/* CUSTOM DURATION MODAL */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalBg}>
           <View style={styles.modalCard}>
@@ -322,7 +349,6 @@ export default function TimerScreen() {
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
@@ -411,6 +437,19 @@ const styles = StyleSheet.create({
   },
   stopText: { color: "white", fontSize: 18, fontWeight: "700" },
 
+  resumeButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 14,
+    marginBottom: 20,
+  },
+  resumeText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+
   resetButton: {
     backgroundColor: COLORS.muted,
     paddingVertical: 10,
@@ -423,7 +462,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  /* Modal Styles */
   modalBg: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
