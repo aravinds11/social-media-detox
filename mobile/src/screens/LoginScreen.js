@@ -29,25 +29,26 @@ export default function LoginScreen({ navigation }) {
 
       const response = await api.post("/auth/login", { email, password });
 
-      // console.log("LOGIN RESPONSE:", response.data);
+      // console.log("LOGIN RESPONSE DATA:", response?.data);
 
-      const token = response.data.token;
-      const fullName = response.data.user.name;  
+      const { token, name, streak, coins } = response.data;
 
       await AsyncStorage.setItem("token", token);
-      await AsyncStorage.setItem("fullName", fullName);
+      await AsyncStorage.setItem("fullName", name);
+      await AsyncStorage.setItem("streak", streak.toString());
+      await AsyncStorage.setItem("coins", coins.toString());
 
-      Alert.alert("Success", "Logged in successfully!");
-
-      navigation.navigate("Dashboard", { username: fullName });
+      navigation.replace("Dashboard", { username: name });
 
     } catch (error) {
-      console.log("Login error:", error?.response?.data || error.message);
+      console.log(
+        "LOGIN ERROR RAW:",
+        error?.response?.data ?? error?.response ?? error.message
+      );
       Alert.alert("Login Failed", "Invalid email or password.");
-    } finally {
-      setLoading(false);
     }
   }
+
 
   return (
     <View style={styles.container}>
