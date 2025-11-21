@@ -1,6 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import dayjs from "dayjs";
 
 const router = express.Router();
 
@@ -42,21 +43,53 @@ router.post("/register", async (req, res) => {
 
 
 router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
   try {
-    const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!user)
+      return res.status(400).json({ message: "Invalid email or password" });
 
     const isMatch = await user.comparePassword(password);
-    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid email or password" });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-    res.json({
+    const today = dayjs().startOf("day");
+    const lastLogin = user.lastLogin ? dayjs(user.lastLogin).startOf("day") : null;
+
+    if (!lastLogin) {
+      user.streak = 1;
+    } else if (lastLogin.isSame(today)) {
+    } else if (lastLogin.add(1, "day").isSame(today)) {
+      user.streak += 1;
+    } else {
+      user.streak = 1;
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    const responseObj = {
       token,
-      user: { id: user._id, name: user.name, email: user.email }
-    });
+      name: user.name,
+      streak: user.streak,
+      coins: user.coins,
+    };
+
+    // console.log("LOGIN ROUTE SENDING RESPONSE:", responseObj);
+
+    res.json(responseObj);
+
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("Login error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
