@@ -8,9 +8,11 @@ import {
   Modal,
   TextInput,
   Alert,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { api } from "../api/api";   // ✅ ADDED for coin rewards
+import { api } from "../api/api";
+import ConfettiCannon from "react-native-confetti-cannon";
 
 const COLORS = {
   bg: "#E7F4FA",
@@ -27,7 +29,7 @@ const PRESETS = [
 ];
 
 export default function TimerScreen() {
-  const [initialDuration, setInitialDuration] = useState(10 * 60); // seconds
+  const [initialDuration, setInitialDuration] = useState(10 * 60);
   const [secondsLeft, setSecondsLeft] = useState(initialDuration);
   const [running, setRunning] = useState(false);
 
@@ -35,21 +37,36 @@ export default function TimerScreen() {
   const [customMin, setCustomMin] = useState("");
   const [customSec, setCustomSec] = useState("");
 
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [rewardVisible, setRewardVisible] = useState(false);
+  const rewardAnim = useRef(new Animated.Value(0)).current;
+  const [lastCoins, setLastCoins] = useState(0);
+
   const intervalRef = useRef(null);
 
-  // Award coins based on completed duration
-  async function awardCoins(totalSeconds) {
-    const coinsEarned = Math.floor(totalSeconds / 300); // 1 coin = 5 mins
+  function triggerRewardAnimation(coins) {
+    setLastCoins(coins);
+    setRewardVisible(true);
+    rewardAnim.setValue(0);
 
+    Animated.timing(rewardAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start(() => {
+      setTimeout(() => setRewardVisible(false), 800);
+    });
+  }
+
+  async function awardCoins(totalSeconds) {
+    const coinsEarned = Math.floor(totalSeconds / 300);
     if (coinsEarned <= 0) return;
 
     try {
       await api.post("/user/add-coins", { coins: coinsEarned });
 
-      Alert.alert(
-        "🎉 Detox Complete!",
-        `You earned ${coinsEarned} coin${coinsEarned > 1 ? "s" : ""}!`
-      );
+      triggerRewardAnimation(coinsEarned);
+      setShowConfetti(true);
     } catch (err) {
       console.log("Error awarding coins:", err);
     }
@@ -72,7 +89,6 @@ export default function TimerScreen() {
           intervalRef.current = null;
           setRunning(false);
 
-          // Award coins on completion
           awardCoins(initialDuration);
 
           return 0;
@@ -91,17 +107,16 @@ export default function TimerScreen() {
     return () => intervalRef.current && clearInterval(intervalRef.current);
   }, []);
 
-  // Custom Duration Save
   function saveCustomDuration() {
     const mins = parseInt(customMin) || 0;
     const secs = parseInt(customSec) || 0;
 
     if (mins < 0 || mins > 240) {
-      Alert.alert("Invalid Minutes", "Minutes must be 0–240");
+      Alert.alert("Invalid Minutes", "Minutes must be 0–240.");
       return;
     }
     if (secs < 0 || secs > 59) {
-      Alert.alert("Invalid Seconds", "Seconds must be 0–59");
+      Alert.alert("Invalid Seconds", "Seconds must be 0–59.");
       return;
     }
     if (mins === 0 && secs === 0) {
@@ -120,7 +135,6 @@ export default function TimerScreen() {
     setModalVisible(false);
   }
 
-  // Display
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
@@ -129,9 +143,14 @@ export default function TimerScreen() {
       <View style={styles.container}>
         <Text style={styles.title}>Detox Session</Text>
 
-        <Image source={require("../../assets/timer.png")} style={styles.timerIcon} />
+        <Image
+          source={require("../../assets/timer.png")}
+          style={styles.timerIcon}
+        />
 
-        <Text style={styles.timerText}>{mm}:{ss}</Text>
+        <Text style={styles.timerText}>
+          {mm}:{ss}
+        </Text>
 
         <Text style={styles.subtitle}>
           Ready to start your detox? Put your device away and relax.
@@ -148,7 +167,7 @@ export default function TimerScreen() {
                 key={p.label}
                 style={[
                   styles.presetBtn,
-                  selected ? styles.presetActive : null,
+                  selected && styles.presetActive,
                 ]}
                 disabled={running}
                 onPress={() => {
@@ -160,7 +179,7 @@ export default function TimerScreen() {
                 <Text
                   style={[
                     styles.presetText,
-                    selected ? styles.presetTextActive : null,
+                    selected && styles.presetTextActive,
                   ]}
                 >
                   {p.label}
@@ -169,7 +188,7 @@ export default function TimerScreen() {
             );
           })}
 
-          {/* CUSTOM */}
+          {/* CUSTOM BUTTON */}
           <TouchableOpacity
             style={styles.customBtn}
             disabled={running}
@@ -198,7 +217,61 @@ export default function TimerScreen() {
         )}
       </View>
 
-      {/* CUSTOM MODAL */}
+      {/* REWARD POPUP */}
+      {rewardVisible && (
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: "40%",
+            left: 0,
+            right: 0,
+            alignItems: "center",
+            opacity: rewardAnim,
+            transform: [
+              {
+                translateY: rewardAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, -20],
+                }),
+              },
+            ],
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#fff",
+              padding: 16,
+              borderRadius: 20,
+              flexDirection: "row",
+              alignItems: "center",
+              elevation: 4,
+            }}
+          >
+            <Image
+              source={require("../../assets/coin.png")}
+              style={{ width: 32, height: 32, marginRight: 10 }}
+            />
+            <Text style={{ fontSize: 22, fontWeight: "700", color: COLORS.primary }}>
+              +{lastCoins} coins!
+            </Text>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* CONFETTI */}
+      {showConfetti && (
+        <ConfettiCannon
+          count={120}
+          origin={{ x: 200, y: -20 }}
+          fadeOut={true}
+          autoStart={true}
+          explosionSpeed={450}
+          fallSpeed={2500}
+          onAnimationEnd={() => setShowConfetti(false)}
+        />
+      )}
+
+      {/* CUSTOM DURATION MODAL */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalBg}>
           <View style={styles.modalCard}>
@@ -236,7 +309,10 @@ export default function TimerScreen() {
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.saveBtn} onPress={saveCustomDuration}>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={saveCustomDuration}
+              >
                 <Text style={styles.saveText}>Save</Text>
               </TouchableOpacity>
             </View>
@@ -246,6 +322,7 @@ export default function TimerScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
@@ -340,8 +417,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     borderRadius: 10,
   },
-  resetText: { color: "white", fontSize: 16, fontWeight: "600" },
+  resetText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
 
+  /* Modal Styles */
   modalBg: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -360,11 +442,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
   },
-
   row: { flexDirection: "row", justifyContent: "space-between" },
   col: { width: "47%" },
-
-  label: { fontWeight: "700", color: COLORS.textDark, marginBottom: 6 },
+  label: {
+    fontWeight: "700",
+    color: COLORS.textDark,
+    marginBottom: 6,
+  },
   input: {
     backgroundColor: "#F6F7F9",
     borderRadius: 12,
@@ -373,7 +457,6 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 16,
   },
-
   modalButtons: {
     flexDirection: "row",
     marginTop: 20,
