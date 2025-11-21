@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { api } from "../api/api";   // ✅ ADDED for coin rewards
 
 const COLORS = {
   bg: "#E7F4FA",
@@ -26,9 +27,7 @@ const PRESETS = [
 ];
 
 export default function TimerScreen() {
-  // Initial duration stored in seconds
-  const [initialDuration, setInitialDuration] = useState(10 * 60);
-
+  const [initialDuration, setInitialDuration] = useState(10 * 60); // seconds
   const [secondsLeft, setSecondsLeft] = useState(initialDuration);
   const [running, setRunning] = useState(false);
 
@@ -38,13 +37,29 @@ export default function TimerScreen() {
 
   const intervalRef = useRef(null);
 
-  // CLEAN RESET
+  // Award coins based on completed duration
+  async function awardCoins(totalSeconds) {
+    const coinsEarned = Math.floor(totalSeconds / 300); // 1 coin = 5 mins
+
+    if (coinsEarned <= 0) return;
+
+    try {
+      await api.post("/user/add-coins", { coins: coinsEarned });
+
+      Alert.alert(
+        "🎉 Detox Complete!",
+        `You earned ${coinsEarned} coin${coinsEarned > 1 ? "s" : ""}!`
+      );
+    } catch (err) {
+      console.log("Error awarding coins:", err);
+    }
+  }
+
   function resetTimer() {
     pauseTimer();
     setSecondsLeft(initialDuration);
   }
 
-  // CLEAN START
   function startTimer() {
     if (running) return;
 
@@ -56,7 +71,10 @@ export default function TimerScreen() {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
           setRunning(false);
-          Alert.alert("Done!", "You completed your detox session 🎉");
+
+          // Award coins on completion
+          awardCoins(initialDuration);
+
           return 0;
         }
         return prev - 1;
@@ -70,26 +88,22 @@ export default function TimerScreen() {
   }
 
   useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    return () => intervalRef.current && clearInterval(intervalRef.current);
   }, []);
 
-  // CUSTOM DURATION VALIDATION
+  // Custom Duration Save
   function saveCustomDuration() {
     const mins = parseInt(customMin) || 0;
     const secs = parseInt(customSec) || 0;
 
     if (mins < 0 || mins > 240) {
-      Alert.alert("Invalid Minutes", "Minutes must be 0–240.");
+      Alert.alert("Invalid Minutes", "Minutes must be 0–240");
       return;
     }
-
     if (secs < 0 || secs > 59) {
-      Alert.alert("Invalid Seconds", "Seconds must be 0–59.");
+      Alert.alert("Invalid Seconds", "Seconds must be 0–59");
       return;
     }
-
     if (mins === 0 && secs === 0) {
       Alert.alert("Invalid Duration", "Duration cannot be 0.");
       return;
@@ -106,7 +120,7 @@ export default function TimerScreen() {
     setModalVisible(false);
   }
 
-  // FORMATTER
+  // Display
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
@@ -115,10 +129,7 @@ export default function TimerScreen() {
       <View style={styles.container}>
         <Text style={styles.title}>Detox Session</Text>
 
-        <Image
-          source={require("../../assets/timer.png")}
-          style={styles.timerIcon}
-        />
+        <Image source={require("../../assets/timer.png")} style={styles.timerIcon} />
 
         <Text style={styles.timerText}>{mm}:{ss}</Text>
 
@@ -126,7 +137,7 @@ export default function TimerScreen() {
           Ready to start your detox? Put your device away and relax.
         </Text>
 
-        {/* PRESET BUTTONS */}
+        {/* PRESETS */}
         <View style={styles.presetsRow}>
           {PRESETS.map((p) => {
             const total = p.minutes * 60 + p.seconds;
@@ -139,12 +150,12 @@ export default function TimerScreen() {
                   styles.presetBtn,
                   selected ? styles.presetActive : null,
                 ]}
+                disabled={running}
                 onPress={() => {
                   pauseTimer();
                   setInitialDuration(total);
                   setSecondsLeft(total);
                 }}
-                disabled={running}
               >
                 <Text
                   style={[
@@ -161,8 +172,8 @@ export default function TimerScreen() {
           {/* CUSTOM */}
           <TouchableOpacity
             style={styles.customBtn}
-            onPress={() => !running && setModalVisible(true)}
             disabled={running}
+            onPress={() => setModalVisible(true)}
           >
             <Text style={styles.customText}>Custom</Text>
           </TouchableOpacity>
@@ -179,7 +190,7 @@ export default function TimerScreen() {
           </TouchableOpacity>
         )}
 
-        {/* RESET — always works now */}
+        {/* RESET */}
         {!running && secondsLeft !== initialDuration && (
           <TouchableOpacity style={styles.resetButton} onPress={resetTimer}>
             <Text style={styles.resetText}>Reset</Text>
