@@ -37,8 +37,14 @@ export default function DashboardScreen({ navigation, route }) {
   const anims = useRef([]).current;
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    fetchDashboardData(); 
+
+    const unsubscribe = navigation.addListener("focus", () => {
+      fetchDashboardData();  
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   async function fetchDashboardData() {
     try {
