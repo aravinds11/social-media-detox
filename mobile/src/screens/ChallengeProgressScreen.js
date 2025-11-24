@@ -21,10 +21,7 @@ const COLORS = {
 
 export default function ChallengeProgressScreen({ route, navigation }) {
   const [active, setActive] = useState(route?.params?.active || null);
-  const [progress, setProgress] = useState({
-    remainingMs: 0,
-    percent: 0,
-  });
+  const [progress, setProgress] = useState({ remainingMs: 0, percent: 0 });
 
   const animatedValue = new Animated.Value(0);
 
@@ -94,12 +91,6 @@ export default function ChallengeProgressScreen({ route, navigation }) {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <Text style={styles.noTitle}>No Active Challenge</Text>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.navigate("Challenge")}
-          >
-            <Text style={styles.backText}>Back to Challenges</Text>
-          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -107,13 +98,6 @@ export default function ChallengeProgressScreen({ route, navigation }) {
 
   const size = 240;
   const strokeWidth = 16;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-
-  const strokeDashoffset = animatedValue.interpolate({
-    inputRange: [0, 100],
-    outputRange: [circumference, 0],
-  });
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -125,6 +109,8 @@ export default function ChallengeProgressScreen({ route, navigation }) {
       </View>
 
       <View style={styles.center}>
+        <View style={{ height: 80 }} />
+
         <View style={{ width: size, height: size }}>
           <View style={styles.circleWrapper}>
             <Animated.View
@@ -184,17 +170,10 @@ export default function ChallengeProgressScreen({ route, navigation }) {
           style={styles.stopBtn}
           onPress={async () => {
             await ChallengeEngine.stopChallenge();
-            navigation.navigate("Challenge");
+            navigation.goBack();
           }}
         >
           <Text style={styles.stopText}>Stop Challenge</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.backSmall}
-          onPress={() => navigation.navigate("Challenge")}
-        >
-          <Text style={styles.backSmallText}>Back to Challenges</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -202,21 +181,11 @@ export default function ChallengeProgressScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-  },
+  safe: { flex: 1, backgroundColor: COLORS.bg },
 
-  headerContainer: {
-    paddingTop: 20,
-    alignItems: "center",
-  },
+  headerContainer: { paddingTop: 20, alignItems: "center" },
 
-  title: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: COLORS.textDark,
-  },
+  title: { fontSize: 30, fontWeight: "800", color: COLORS.textDark },
 
   subtitle: {
     marginTop: 4,
@@ -227,7 +196,7 @@ const styles = StyleSheet.create({
 
   center: {
     alignItems: "center",
-    marginTop: 40,
+    marginTop: 120,
   },
 
   noTitle: {
@@ -236,35 +205,16 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
   },
 
-  backBtn: {
-    marginTop: 14,
-    backgroundColor: COLORS.accent,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-  },
-
-  backText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
-  },
-
-  circleWrapper: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  circleWrapper: { justifyContent: "center", alignItems: "center" },
 
   circleTextContainer: {
     position: "absolute",
-    top: "35%",
+    top: "33%",
     width: "100%",
     alignItems: "center",
   },
 
-  progressCircle: {
-    borderStyle: "solid",
-  },
+  progressCircle: { borderStyle: "solid" },
 
   remainingText: {
     fontSize: 34,
@@ -300,14 +250,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
-  },
-
-  backSmall: {
-    marginTop: 12,
-  },
-
-  backSmallText: {
-    color: COLORS.muted,
-    fontSize: 14,
   },
 });
