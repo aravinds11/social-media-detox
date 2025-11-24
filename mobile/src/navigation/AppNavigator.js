@@ -6,6 +6,7 @@ import RegisterScreen from "../screens/RegisterScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import TimerScreen from "../screens/TimerScreen";
 import ChallengeScreen from "../screens/ChallengeScreen";
+import ChallengeProgressScreen from "../screens/ChallengeProgressScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +19,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Timer" component={TimerScreen} />
         <Stack.Screen name="Challenge" component={ChallengeScreen} />
+        <Stack.Screen name="ChallengeProgress" component={ChallengeProgressScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

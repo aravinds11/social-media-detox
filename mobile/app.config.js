@@ -15,10 +15,25 @@ export default {
     },
 
     android: {
+      package: "com.detoxmobile.app",
+
+      permissions: [
+        "android.permission.PACKAGE_USAGE_STATS"
+      ],
+
+      queries: [
+        {
+          intent: {
+            action: "android.settings.USAGE_ACCESS_SETTINGS"
+          }
+        }
+      ],
+
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
+
       edgeToEdgeEnabled: true
     },
 
