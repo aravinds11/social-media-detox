@@ -82,9 +82,26 @@ export default function TimerScreen() {
       await api.post("/user/add-coins", { coins: coinsEarned });
       triggerRewardAnimation(coinsEarned);
       setShowConfetti(true);
-    } catch (err) {
-      console.log("Error awarding coins:", err);
-    }
+    } catch (err) {}
+  }
+
+  async function logUsageToBackend(totalSeconds) {
+    try {
+      const minutes = Math.floor(totalSeconds / 60);
+
+      await api.post("/usage/log", {
+        totalTime: `${minutes}m`,
+        apps: [
+          {
+            id: "detox-session",
+            label: "Detox Session",
+            time: `${minutes}m`,
+            pct: 1,
+            iconUrl: "https://i.imgur.com/zO0YF8X.png",
+          },
+        ],
+      });
+    } catch (err) {}
   }
 
   function resetTimer() {
@@ -102,13 +119,17 @@ export default function TimerScreen() {
 
     setRunning(true);
 
-    intervalRef.current = setInterval(() => {
+    intervalRef.current = setInterval(async () => {
       setSecondsLeft(prev => {
         if (prev <= 1) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
           setRunning(false);
-          awardCoins(initialDuration);
+
+          const totalSeconds = initialDuration;
+          logUsageToBackend(totalSeconds);
+          awardCoins(totalSeconds);
+
           return 0;
         }
         return prev - 1;
@@ -132,18 +153,9 @@ export default function TimerScreen() {
     const mins = parseInt(customMin) || 0;
     const secs = parseInt(customSec) || 0;
 
-    if (mins < 0 || mins > 240) {
-      Alert.alert("Invalid Minutes", "Minutes must be 0–240.");
-      return;
-    }
-    if (secs < 0 || secs > 59) {
-      Alert.alert("Invalid Seconds", "Seconds must be 0–59.");
-      return;
-    }
-    if (mins === 0 && secs === 0) {
-      Alert.alert("Invalid Duration", "Duration cannot be 0.");
-      return;
-    }
+    if (mins < 0 || mins > 240) return;
+    if (secs < 0 || secs > 59) return;
+    if (mins === 0 && secs === 0) return;
 
     const total = mins * 60 + secs;
 
@@ -353,7 +365,6 @@ export default function TimerScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   container: { flex: 1, alignItems: "center", paddingTop: 80 },
-
   title: {
     fontSize: 32,
     fontWeight: "800",
@@ -379,7 +390,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     marginBottom: 20,
   },
-
   presetsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -406,7 +416,6 @@ const styles = StyleSheet.create({
   presetTextActive: {
     color: "white",
   },
-
   customBtn: {
     backgroundColor: "#DDE3EA",
     paddingVertical: 10,
@@ -418,7 +427,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.textDark,
   },
-
   startButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: 14,
@@ -427,7 +435,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   startText: { color: "white", fontSize: 18, fontWeight: "700" },
-
   stopButton: {
     backgroundColor: COLORS.danger,
     paddingVertical: 14,
@@ -436,7 +443,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   stopText: { color: "white", fontSize: 18, fontWeight: "700" },
-
   resumeButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: 14,
@@ -449,7 +455,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
-
   resetButton: {
     backgroundColor: COLORS.muted,
     paddingVertical: 10,
@@ -461,7 +466,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-
   modalBg: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
