@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../api/api";
-
+import useUsageStats from "../hooks/useUsageStats";
 
 const { width } = Dimensions.get("window");
 
@@ -23,6 +23,15 @@ const COLORS = {
   accentText: "#0e2233",
   muted: "#8a98a6",
   progressTrack: "#e6eef0",
+};
+
+const ICONS = {
+  "com.instagram.android": require("../../assets/instagram.png"),
+  "com.facebook.katana": require("../../assets/facebook.png"),
+  "com.snapchat.android": require("../../assets/snapchat.png"),
+  "com.zhiliaoapp.musically": require("../../assets/tiktok.png"),
+  "com.google.android.youtube": require("../../assets/youtube.png"),
+  "com.twitter.android": require("../../assets/x.png"),
 };
 
 export default function DashboardScreen({ navigation, route }) {
@@ -36,57 +45,79 @@ export default function DashboardScreen({ navigation, route }) {
 
   const anims = useRef([]).current;
 
+  const { apps, hasPermission, loading: usageLoading, refresh } = useUsageStats({
+    autoUpload: true,
+  });
+
   useEffect(() => {
-    fetchDashboardData(); 
-
+    fetchDashboardData();
     const unsubscribe = navigation.addListener("focus", () => {
-      fetchDashboardData();  
+      fetchDashboardData();
+      refresh();
     });
-
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    if (!usageLoading) {
+      if (apps.length > 0) {
+        const mapped = apps.map((a) => ({
+          ...a,
+          icon: ICONS[a.id] || require("../../assets/default_app.png"),
+        }));
+        setUsageData(mapped);
+        animateApps(mapped);
+      } else {
+        fetchAppsFromBackend();
+      }
+    }
+  }, [usageLoading, apps]);
+
+  async function fetchAppsFromBackend() {
+    try {
+      const usageRes = await api.get("/usage/apps");
+      const stored = usageRes.data.apps || [];
+      const mapped = stored.map((a) => ({
+        ...a,
+        icon: ICONS[a.id] || require("../../assets/default_app.png"),
+      }));
+      setUsageData(mapped);
+      animateApps(mapped);
+    } catch (err) {}
+  }
 
   async function fetchDashboardData() {
     try {
       const progressRes = await api.get("/user/progress");
-
       setStreak(progressRes.data.streak ?? 0);
       setCoins(progressRes.data.coins ?? 0);
       setUsername(progressRes.data.name || nameFromRoute);
-
-      const usageRes = await api.get("/usage/apps");
-      const apps = usageRes.data.apps || [];
-
-      setUsageData(apps);
-
-      anims.length = apps.length;
-      apps.forEach((_, i) => (anims[i] = new Animated.Value(0)));
-
-      const animations = apps.map((app, i) =>
-        Animated.timing(anims[i], {
-          toValue: app.pct ?? 0,
-          duration: 700,
-          delay: 150 * i,
-          useNativeDriver: false,
-        })
-      );
-
-      Animated.stagger(100, animations).start();
+      setLoading(false);
     } catch (err) {
-      console.log("Dashboard fetch error:", err);
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
-  if (loading) {
+  function animateApps(apps) {
+    anims.length = apps.length;
+    apps.forEach((_, i) => (anims[i] = new Animated.Value(0)));
+    const animations = apps.map((app, i) =>
+      Animated.timing(anims[i], {
+        toValue: app.pct ?? 0,
+        duration: 700,
+        delay: 150 * i,
+        useNativeDriver: false,
+      })
+    );
+    Animated.stagger(100, animations).start();
+  }
+
+  if (loading || usageLoading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View style={styles.center}>
           <ActivityIndicator size="large" color={COLORS.primaryGreen} />
-          <Text style={{ marginTop: 12, color: COLORS.accentText }}>
-            Loading your dashboard...
-          </Text>
+          <Text style={styles.loadingText}>Loading your dashboard...</Text>
         </View>
       </SafeAreaView>
     );
@@ -95,7 +126,6 @@ export default function DashboardScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        
         <View style={styles.header}>
           <Text style={styles.title}>Welcome Back, {username}</Text>
           <Text style={styles.subtitle}>Stay focused, stay healthy.</Text>
@@ -109,9 +139,9 @@ export default function DashboardScreen({ navigation, route }) {
               <View style={styles.iconCircle}>
                 <Image source={require("../../assets/streak.png")} style={styles.iconImageGreen} />
               </View>
-              <View style={{ marginLeft: 12 }}>
-                <Text style={styles.bigNumber}>{streak} days</Text>
-                <Text style={styles.smallText}>Streak</Text>
+              <View style={styles.progressLabelBlock}>
+                <Text style={styles.bigNumber}>{streak}</Text>
+                <Text style={styles.smallText}>Days Streak</Text>
               </View>
             </View>
 
@@ -121,7 +151,7 @@ export default function DashboardScreen({ navigation, route }) {
               <View style={styles.iconCircle}>
                 <Image source={require("../../assets/coin.png")} style={styles.iconImageGreen} />
               </View>
-              <View style={{ marginLeft: 12 }}>
+              <View style={styles.progressLabelBlock}>
                 <Text style={styles.bigNumber}>{coins}</Text>
                 <Text style={styles.smallText}>Coins Earned</Text>
               </View>
@@ -130,53 +160,72 @@ export default function DashboardScreen({ navigation, route }) {
         </View>
 
         <View style={styles.actionsRow}>
-          <DashboardButton label="Start Timer" icon={require("../../assets/timer.png")} onPress={() => navigation?.navigate?.("Timer")} />
-          <DashboardButton label="Challenge" icon={require("../../assets/challenge.png")} onPress={() => navigation?.navigate?.("Challenge")} />
-          <DashboardButton label="Stats" icon={require("../../assets/stats.png")} onPress={() => navigation?.navigate?.("Stats")} />
-          <DashboardButton label="Profile" icon={require("../../assets/profile.png")} onPress={() => navigation?.navigate?.("Profile")} />
+          <DashboardButton
+            label="Start Timer"
+            icon={require("../../assets/timer.png")}
+            onPress={() => navigation?.navigate?.("Timer")}
+          />
+          <DashboardButton
+            label="Challenge"
+            icon={require("../../assets/challenge.png")}
+            onPress={() => navigation?.navigate?.("Challenge")}
+          />
+          <DashboardButton
+            label="Stats"
+            icon={require("../../assets/stats.png")}
+            onPress={() => navigation?.navigate?.("Stats")}
+          />
+          <DashboardButton
+            label="Profile"
+            icon={require("../../assets/profile.png")}
+            onPress={() => navigation?.navigate?.("Profile")}
+          />
         </View>
 
         <View style={[styles.card, { marginTop: 18 }]}>
-          <Text style={styles.cardTitle}>Today’s Usage</Text>
+          <Text style={styles.cardTitle}>Today’s Social Media Usage</Text>
 
-          <View style={{ marginTop: 12 }}>
-            {usageData.length === 0 && (
-              <Text style={{ color: COLORS.muted, textAlign: "center", paddingVertical: 10 }}>
-                No usage data available today.
-              </Text>
-            )}
+          {!hasPermission && (
+            <Text style={styles.noDataText}>
+              Usage Access permission not granted.
+            </Text>
+          )}
 
-            {usageData.map((row, i) => (
-              <View key={row.id} style={styles.usageRow}>
-                <View style={styles.usageLeft}>
-                  <Image
-                    source={{ uri: row.iconUrl }}
-                    style={styles.appIcon}
-                  />
+          {usageData.length === 0 && hasPermission && (
+            <Text style={styles.noDataText}>No app usage detected today.</Text>
+          )}
+
+          {usageData.map((row, i) => (
+            <View key={row.id} style={styles.usageRow}>
+              <View style={styles.usageLeft}>
+                <Image source={row.icon} style={styles.appIcon} />
+                <View style={styles.timeBlock}>
                   <Text style={styles.usageTime}>{row.time}</Text>
                 </View>
+              </View>
 
-                <View style={styles.usageRight}>
-                  <View style={styles.progressTrack}>
-                    <Animated.View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: anims[i].interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ["0%", "100%"],
-                          }),
-                        },
-                      ]}
-                    />
-                  </View>
+              <View style={styles.usageRight}>
+                <View style={styles.progressTrack}>
+                  <Animated.View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: anims[i]
+                          ? anims[i].interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ["0%", "100%"],
+                            })
+                          : `${(row.pct || 0) * 100}%`,
+                      },
+                    ]}
+                  />
                 </View>
               </View>
-            ))}
-          </View>
+            </View>
+          ))}
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={styles.bottomSpace} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -200,6 +249,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    color: COLORS.accentText,
+  },
   container: {
     padding: PAD,
     paddingTop: 36,
@@ -219,7 +277,6 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontWeight: "500",
   },
-
   card: {
     backgroundColor: COLORS.card,
     borderRadius: CARD_RADIUS,
@@ -236,7 +293,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 10,
   },
-
   progressRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -259,14 +315,25 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
   },
-
+  progressLabelBlock: {
+    marginLeft: 12,
+  },
+  bigNumber: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: COLORS.accentText,
+  },
+  smallText: {
+    fontSize: 14,
+    color: COLORS.muted,
+    fontWeight: "500",
+  },
   divider: {
     width: 1,
     height: 64,
     backgroundColor: "#eef3f4",
     marginHorizontal: 18,
   },
-
   actionsRow: {
     marginTop: 18,
     flexDirection: "row",
@@ -293,7 +360,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
   },
-
+  noDataText: {
+    color: COLORS.muted,
+    textAlign: "center",
+    paddingVertical: 10,
+  },
   usageRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -302,15 +373,17 @@ const styles = StyleSheet.create({
   usageLeft: {
     flexDirection: "row",
     alignItems: "center",
-    width: 120,
+    width: 140,
   },
   appIcon: {
     width: 36,
     height: 36,
     borderRadius: 8,
   },
-  usageTime: {
+  timeBlock: {
     marginLeft: 12,
+  },
+  usageTime: {
     fontWeight: "800",
     color: COLORS.accentText,
     fontSize: 16,
@@ -329,5 +402,8 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: COLORS.primaryGreen,
     borderRadius: 12,
+  },
+  bottomSpace: {
+    height: 40,
   },
 });
