@@ -1,0 +1,72 @@
+import { useEffect, useState } from "react";
+import UsageStats from "../native/UsageStats";
+import { api } from "../api/api";
+
+export default function useUsageStats({ autoUpload = true } = {}) {
+  const [apps, setApps] = useState([]);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  async function refresh() {
+    setLoading(true);
+
+    const perm = await UsageStats.hasPermission();
+    setHasPermission(perm);
+
+    if (!perm) {
+      setApps([]);
+      setLoading(false);
+      return;
+    }
+
+    const now = Date.now();
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    let nativeApps = [];
+    try {
+      nativeApps = await UsageStats.getPerAppUsage(start.getTime(), now);
+    } catch (e) {}
+
+    if (nativeApps && nativeApps.length > 0) {
+      const formatted = nativeApps.map((a) => ({
+        id: a.id,
+        label: a.label,
+        time: a.time,
+        minutes: a.minutes,
+        pct: a.pct,
+        iconUrl: a.icon,
+      }));
+
+      setApps(formatted);
+
+      if (autoUpload) {
+        const totalMinutes = formatted.reduce((s, a) => s + a.minutes, 0);
+        try {
+          await api.post("/usage/log", {
+            totalTime: `${totalMinutes}m`,
+            apps: formatted,
+          });
+        } catch (e) {}
+      }
+    } else {
+      try {
+        const usageRes = await api.get("/usage/apps");
+        setApps(usageRes.data.apps || []);
+      } catch (e) {}
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  return {
+    apps,
+    hasPermission,
+    loading,
+    refresh,
+  };
+}
