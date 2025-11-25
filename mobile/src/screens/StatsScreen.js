@@ -30,7 +30,6 @@ export default function StatsScreen({ navigation }) {
 
   useEffect(() => {
     fetchStats();
-
     const unsubscribe = navigation.addListener("focus", fetchStats);
     return unsubscribe;
   }, []);
@@ -38,14 +37,12 @@ export default function StatsScreen({ navigation }) {
   async function fetchStats() {
     try {
       const weekRes = await api.get("/usage/weekly");
-      const aiRes = await api.get("/ai/insights");
+      const aiRes = await api.get("/user/insights");
 
       setWeekly(weekRes.data.days || []);
       setAddictionScore(aiRes.data.addictionScore || 0);
       setTrend(aiRes.data.trend || "No trend available");
-    } catch (err) {
-      console.log("Stats fetch error:", err);
-    }
+    } catch (err) {}
     setLoading(false);
   }
 
@@ -66,13 +63,11 @@ export default function StatsScreen({ navigation }) {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.title}>Your Stats</Text>
           <Text style={styles.subtitle}>Analytics • Insights • Trends</Text>
         </View>
 
-        {/* AI SCORE CARD */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>AI Insights</Text>
 
@@ -90,7 +85,6 @@ export default function StatsScreen({ navigation }) {
           <Text style={styles.trendText}>📊 {trend}</Text>
         </View>
 
-        {/* WEEKLY USAGE */}
         <View style={[styles.card, { marginTop: 18 }]}>
           <Text style={styles.cardTitle}>Weekly Usage</Text>
 
@@ -116,7 +110,6 @@ export default function StatsScreen({ navigation }) {
           )}
         </View>
 
-        {/* SPACER */}
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -144,8 +137,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: COLORS.accentText,
   },
-
-  /* Header */
   header: {
     alignItems: "center",
     marginBottom: 18,
@@ -161,8 +152,6 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontWeight: "500",
   },
-
-  /* Card */
   card: {
     backgroundColor: COLORS.card,
     borderRadius: CARD_RADIUS,
@@ -179,8 +168,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 10,
   },
-
-  /* AI Insights */
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -204,8 +191,6 @@ const styles = StyleSheet.create({
     color: COLORS.accentText,
     fontWeight: "600",
   },
-
-  /* Weekly rows */
   weekRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -234,7 +219,6 @@ const styles = StyleSheet.create({
     color: COLORS.accentText,
     fontWeight: "600",
   },
-
   noData: {
     color: COLORS.muted,
     textAlign: "center",
