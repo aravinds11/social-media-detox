@@ -8,7 +8,6 @@ import {
   Image,
   Alert,
 } from "react-native";
-
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../api/api";
 
@@ -29,44 +28,44 @@ export default function LoginScreen({ navigation }) {
 
       const response = await api.post("/auth/login", { email, password });
 
-      // console.log("LOGIN RESPONSE DATA:", response?.data);
+      const { token, name, email: userEmail, streak, coins } = response.data;
 
-      const { token, name, streak, coins } = response.data;
+      if (!token) {
+        throw new Error("No token returned from server");
+      }
 
       await AsyncStorage.setItem("token", token);
-      await AsyncStorage.setItem("fullName", name);
-      await AsyncStorage.setItem("streak", streak.toString());
-      await AsyncStorage.setItem("coins", coins.toString());
+      await AsyncStorage.setItem("fullName", name || "");
+      if (userEmail) await AsyncStorage.setItem("email", userEmail);
+      await AsyncStorage.setItem("streak", (streak ?? 0).toString());
+      await AsyncStorage.setItem("coins", (coins ?? 0).toString());
 
-      navigation.replace("Dashboard", { username: name });
-
+      navigation.replace("Dashboard");
     } catch (error) {
       console.log(
         "LOGIN ERROR RAW:",
         error?.response?.data ?? error?.response ?? error.message
       );
-      Alert.alert("Login Failed", "Invalid email or password.");
+      Alert.alert(
+        "Login Failed",
+        error?.response?.data?.message || "Invalid email or password."
+      );
+    } finally {
+      setLoading(false);
     }
   }
-
 
   return (
     <View style={styles.container}>
       <View style={styles.background} />
 
       <View style={styles.card}>
-        {/* Icon */}
         <View style={styles.iconContainer}>
-          <Image
-            source={require("../../assets/lock.png")}
-            style={styles.icon}
-          />
+          <Image source={require("../../assets/lock.png")} style={styles.icon} />
         </View>
 
-        {/* Title */}
         <Text style={styles.title}>Welcome Back</Text>
 
-        {/* Email Input */}
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -74,9 +73,9 @@ export default function LoginScreen({ navigation }) {
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
+          keyboardType="email-address"
         />
 
-        {/* Password Input with Eye */}
         <View style={styles.passwordWrapper}>
           <TextInput
             style={[styles.input, { flex: 1, marginBottom: 0 }]}
@@ -102,40 +101,30 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
           <Text style={styles.forgotText}>Forgot password?</Text>
         </TouchableOpacity>
 
-        {/* Login Button */}
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.loginButtonText}>
             {loading ? "Logging in..." : "Login"}
           </Text>
         </TouchableOpacity>
 
-        {/* Divider */}
         <View style={styles.dividerContainer}>
           <View style={styles.divider} />
           <Text style={styles.dividerText}>OR</Text>
           <View style={styles.divider} />
         </View>
 
-        {/* Google Sign-In */}
         <TouchableOpacity style={styles.googleButton}>
-          <Image
-            source={require("../../assets/google.png")}
-            style={styles.googleIcon}
-          />
+          <Image source={require("../../assets/google.png")} style={styles.googleIcon} />
           <Text style={styles.googleButtonText}>Continue with Google</Text>
         </TouchableOpacity>
 
-        {/* Footer */}
         <Text style={styles.footerText}>
           Don’t have an account?{" "}
-          <Text
-            style={styles.footerLink}
-            onPress={() => navigation.navigate("Register")}
-          >
+          <Text style={styles.footerLink} onPress={() => navigation.navigate("Register")}>
             Register
           </Text>
         </Text>
@@ -296,5 +285,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-
-
