@@ -1,9 +1,51 @@
 import express from "express";
 import Usage from "../models/Usage.js";
+import User from "../models/User.js";
 import authMiddleware from "../middleware/auth.js";
 import dayjs from "dayjs";
+import axios from "axios";
 
 const router = express.Router();
+const FLASK_URL = process.env.FLASK_URL || "http://127.0.0.1:5000";
+
+function computeFeaturesFromApps(apps, totalTimeStr) {
+  const totalMinutes =
+    parseInt((totalTimeStr || "0m").replace("m", "")) ||
+    apps.reduce((s, a) => s + (a.minutes || 0), 0);
+
+  const daily_screen_time = Math.max(0, totalMinutes);
+
+  const sorted = [...apps].sort((a, b) => (b.minutes || 0) - (a.minutes || 0));
+  const topUsage = sorted[0] ? sorted[0].minutes || 0 : 0;
+
+  const session_duration = Math.max(
+    5,
+    Math.round((topUsage * 0.6) + (totalMinutes / Math.max(1, apps.length * 2)))
+  );
+
+  const usageSpread = apps.map(a => a.minutes || 0);
+  const stdDev = usageSpread.length > 1
+    ? Math.sqrt(
+        usageSpread.reduce((sum, x) => sum + Math.pow(x - (totalMinutes / apps.length), 2), 0) /
+        usageSpread.length
+      )
+    : 0;
+
+  const app_switches = Math.round(
+    Math.min(200, (apps.length * 5) + (stdDev * 0.4))
+  );
+
+  const night_activity = Math.round(
+    Math.min(totalMinutes, (totalMinutes * 0.35))
+  );
+
+  return [
+    daily_screen_time,
+    session_duration,
+    app_switches,
+    night_activity
+  ];
+}
 
 router.get("/apps", authMiddleware, async (req, res) => {
   try {
@@ -75,6 +117,25 @@ router.post("/log", authMiddleware, async (req, res) => {
     }
 
     await usage.save();
+
+    const features = computeFeaturesFromApps(apps, totalTime);
+
+    try {
+      const flaskRes = await axios.post(`${FLASK_URL}/analyze`, { usage: features });
+
+      await User.findByIdAndUpdate(req.user.id, {
+        $push: {
+          usageHistory: {
+            usage: features,
+            cluster: flaskRes.data.cluster || null,
+            prediction: flaskRes.data.prediction || null,
+            recommendations: flaskRes.data.recommendations || null,
+          },
+        },
+      });
+    } catch (e) {
+      console.error("FLASK analyze error:", e.message);
+    }
 
     res.json({ message: "Usage logged successfully" });
 
