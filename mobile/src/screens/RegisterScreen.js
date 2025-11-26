@@ -41,24 +41,24 @@ export default function RegisterScreen({ navigation }) {
         password,
       });
 
-      const token = response.data.token;
+      const token = response?.data?.token;
+      const user = response?.data?.user || {};
 
-      // Save token
+      if (!token) {
+        Alert.alert("Registration Failed", "No token returned from server.");
+        return;
+      }
+
       await AsyncStorage.setItem("token", token);
+      await AsyncStorage.setItem("fullName", user.name || fullName);
+      if (user.email) await AsyncStorage.setItem("email", user.email);
 
-      Alert.alert("Success", "Account created!");
-      
-      await AsyncStorage.setItem("fullName", fullName);
-
-      navigation.navigate("Dashboard", {
-      username: fullName,
-      });
-
-
+      navigation.replace("Dashboard");
     } catch (error) {
       console.log("Register error:", error?.response?.data || error.message);
 
-      if (error?.response?.data?.message === "Email already exists" || error?.response?.data?.message === "User already exists") {
+      const msg = error?.response?.data?.message;
+      if (msg === "Email already exists" || msg === "User already exists") {
         Alert.alert("Registration Failed", "This email is already registered.");
       } else {
         Alert.alert("Registration Failed", "Could not create your account.");
@@ -75,7 +75,6 @@ export default function RegisterScreen({ navigation }) {
       <View style={styles.card}>
         <Text style={styles.title}>Create Account</Text>
 
-        {/* Full Name */}
         <TextInput
           style={styles.input}
           placeholder="Full Name"
@@ -84,7 +83,6 @@ export default function RegisterScreen({ navigation }) {
           onChangeText={setFullName}
         />
 
-        {/* Email */}
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -92,9 +90,9 @@ export default function RegisterScreen({ navigation }) {
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
+          keyboardType="email-address"
         />
 
-        {/* Password */}
         <View style={styles.passwordWrapper}>
           <TextInput
             style={[styles.input, { flex: 1, marginBottom: 0 }]}
@@ -120,7 +118,6 @@ export default function RegisterScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Confirm Password */}
         <View style={styles.passwordWrapper}>
           <TextInput
             style={[styles.input, { flex: 1, marginBottom: 0 }]}
@@ -148,7 +145,6 @@ export default function RegisterScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Register Button */}
         <TouchableOpacity
           style={styles.registerButton}
           onPress={handleRegister}
