@@ -2,6 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import dayjs from "dayjs";
+import authMiddleware from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -34,13 +35,11 @@ router.post("/register", async (req, res) => {
         email: user.email
       }
     });
-
   } catch (err) {
     console.error("Register error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
-
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -79,16 +78,57 @@ router.post("/login", async (req, res) => {
     const responseObj = {
       token,
       name: user.name,
+      email: user.email,
       streak: user.streak,
       coins: user.coins,
     };
 
-    // console.log("LOGIN ROUTE SENDING RESPONSE:", responseObj);
-
     res.json(responseObj);
-
   } catch (err) {
     console.error("Login error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/update-name", authMiddleware, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ message: "Name is required" });
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { name },
+      { new: true }
+    ).select("name email");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ success: true, name: user.name, email: user.email });
+  } catch (err) {
+    console.error("POST /auth/update-name error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/change-password", authMiddleware, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: "Both old and new password are required" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isMatch = await user.comparePassword(oldPassword);
+    if (!isMatch) return res.status(400).json({ message: "Old password incorrect" });
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ success: true, message: "Password updated" });
+  } catch (err) {
+    console.error("POST /auth/change-password error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
