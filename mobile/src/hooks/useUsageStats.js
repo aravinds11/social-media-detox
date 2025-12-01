@@ -24,6 +24,7 @@ export default function useUsageStats({ autoUpload = true } = {}) {
     start.setHours(0, 0, 0, 0);
 
     let nativeApps = [];
+
     try {
       nativeApps = await UsageStats.getPerAppUsage(start.getTime(), now);
     } catch (e) {}
@@ -40,7 +41,7 @@ export default function useUsageStats({ autoUpload = true } = {}) {
 
       setApps(formatted);
 
-      if (autoUpload) {
+      if (autoUpload && formatted.length > 0) {
         const totalMinutes = formatted.reduce((s, a) => s + a.minutes, 0);
         try {
           await api.post("/usage/log", {
@@ -51,8 +52,9 @@ export default function useUsageStats({ autoUpload = true } = {}) {
       }
     } else {
       try {
-        const usageRes = await api.get("/usage/apps");
-        setApps(usageRes.data.apps || []);
+        const backendRes = await api.get("/usage/apps");
+        const stored = backendRes.data.apps || [];
+        setApps(stored);
       } catch (e) {}
     }
 

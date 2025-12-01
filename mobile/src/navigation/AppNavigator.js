@@ -8,6 +8,10 @@ import TimerScreen from "../screens/TimerScreen";
 import ChallengeScreen from "../screens/ChallengeScreen";
 import ChallengeProgressScreen from "../screens/ChallengeProgressScreen";
 import StatsScreen from "../screens/StatsScreen";
+import AIInsightsScreen from "../screens/AIInsightsScreen";
+import ProfileScreen from "../screens/ProfileScreen";
+import EditNameScreen from "../screens/EditNameScreen";
+import ChangePasswordScreen from "../screens/ChangePasswordScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -22,6 +26,10 @@ export default function AppNavigator() {
         <Stack.Screen name="Challenge" component={ChallengeScreen} />
         <Stack.Screen name="ChallengeProgress" component={ChallengeProgressScreen} />
         <Stack.Screen name="Stats" component={StatsScreen} />
+        <Stack.Screen name="AIInsights" component={AIInsightsScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="EditName" component={EditNameScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

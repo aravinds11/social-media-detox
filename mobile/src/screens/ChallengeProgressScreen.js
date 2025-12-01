@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -9,10 +9,10 @@ import {
 } from "react-native";
 import ChallengeEngine from "../services/challengeEngine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Svg, { Circle } from "react-native-svg";
 
 const COLORS = {
   bg: "#dff3ff",
-  card: "#ffffff",
   textDark: "#0e2233",
   muted: "#6b7a86",
   accent: "#00916E",
@@ -23,7 +23,7 @@ export default function ChallengeProgressScreen({ route, navigation }) {
   const [active, setActive] = useState(route?.params?.active || null);
   const [progress, setProgress] = useState({ remainingMs: 0, percent: 0 });
 
-  const animatedValue = new Animated.Value(0);
+  const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const load = async () => {
@@ -67,7 +67,6 @@ export default function ChallengeProgressScreen({ route, navigation }) {
   }, [active]);
 
   function formatRemaining(ms) {
-    if (!ms) return "0s";
     const sec = Math.floor(ms / 1000);
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
@@ -89,7 +88,7 @@ export default function ChallengeProgressScreen({ route, navigation }) {
   if (!active) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.center}>
+        <View style={styles.noContainer}>
           <Text style={styles.noTitle}>No Active Challenge</Text>
         </View>
       </SafeAreaView>
@@ -98,6 +97,9 @@ export default function ChallengeProgressScreen({ route, navigation }) {
 
   const size = 240;
   const strokeWidth = 16;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -109,48 +111,32 @@ export default function ChallengeProgressScreen({ route, navigation }) {
       </View>
 
       <View style={styles.center}>
-        <View style={{ height: 80 }} />
-
         <View style={{ width: size, height: size }}>
-          <View style={styles.circleWrapper}>
-            <Animated.View
-              style={[
-                styles.progressCircle,
-                {
-                  width: size,
-                  height: size,
-                  borderRadius: size / 2,
-                  borderWidth: strokeWidth,
-                  borderColor: COLORS.accent + "55",
-                  position: "absolute",
-                },
-              ]}
+          <Svg width={size} height={size}>
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={COLORS.accent + "40"}
+              strokeWidth={strokeWidth}
+              fill="none"
             />
 
-            <Animated.View
-              style={[
-                styles.progressCircle,
-                {
-                  width: size,
-                  height: size,
-                  borderRadius: size / 2,
-                  borderWidth: strokeWidth,
-                  borderColor: COLORS.accent,
-                  position: "absolute",
-                  borderRightColor: "transparent",
-                  borderBottomColor: "transparent",
-                  transform: [
-                    {
-                      rotate: animatedValue.interpolate({
-                        inputRange: [0, 100],
-                        outputRange: ["0deg", "360deg"],
-                      }),
-                    },
-                  ],
-                },
-              ]}
+            <AnimatedCircle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={COLORS.accent}
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset={animatedValue.interpolate({
+                inputRange: [0, 100],
+                outputRange: [circumference, 0],
+              })}
+              strokeLinecap="round"
             />
-          </View>
+          </Svg>
 
           <View style={styles.circleTextContainer}>
             <Text style={styles.remainingText}>
@@ -163,14 +149,14 @@ export default function ChallengeProgressScreen({ route, navigation }) {
         </View>
 
         <Text style={styles.motivational}>
-          {motivationalLines[active.levelKey] || ""}
+          {motivationalLines[active.levelKey]}
         </Text>
 
         <TouchableOpacity
           style={styles.stopBtn}
           onPress={async () => {
             await ChallengeEngine.stopChallenge();
-            navigation.goBack();
+            navigation.navigate("Challenge");
           }}
         >
           <Text style={styles.stopText}>Stop Challenge</Text>
@@ -183,9 +169,17 @@ export default function ChallengeProgressScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
 
-  headerContainer: { paddingTop: 20, alignItems: "center" },
+  headerContainer: {
+    paddingTop: 40,
+    paddingBottom: 20,
+    alignItems: "center",
+  },
 
-  title: { fontSize: 30, fontWeight: "800", color: COLORS.textDark },
+  title: {
+    fontSize: 30,
+    fontWeight: "800",
+    color: COLORS.textDark,
+  },
 
   subtitle: {
     marginTop: 4,
@@ -195,26 +189,18 @@ const styles = StyleSheet.create({
   },
 
   center: {
+    flex: 1,
     alignItems: "center",
-    marginTop: 120,
+    justifyContent: "flex-start",
+    paddingTop: 20,
   },
-
-  noTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: COLORS.textDark,
-  },
-
-  circleWrapper: { justifyContent: "center", alignItems: "center" },
 
   circleTextContainer: {
     position: "absolute",
-    top: "33%",
+    top: "35%",
     width: "100%",
     alignItems: "center",
   },
-
-  progressCircle: { borderStyle: "solid" },
 
   remainingText: {
     fontSize: 34,
@@ -230,19 +216,19 @@ const styles = StyleSheet.create({
   },
 
   motivational: {
-    marginTop: 24,
+    marginTop: 28,
     fontSize: 15,
     fontWeight: "600",
     color: COLORS.textDark,
-    width: "80%",
     textAlign: "center",
+    width: "80%",
   },
 
   stopBtn: {
     marginTop: 30,
     backgroundColor: COLORS.danger,
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 26,
     borderRadius: 14,
   },
 
@@ -250,5 +236,17 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
+  },
+
+  noContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  noTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: COLORS.textDark,
   },
 });

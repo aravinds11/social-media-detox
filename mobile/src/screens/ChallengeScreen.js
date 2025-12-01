@@ -49,7 +49,7 @@ export default function ChallengeScreen({ navigation }) {
     {
       id: 1,
       level: "Beginner",
-      tagline: "🎯 Start small, stay mindful.",
+      tagline: "Start small, stay mindful.",
       hours: 2,
       reward: 20,
       icon: require("../../assets/standing.png"),
@@ -59,7 +59,7 @@ export default function ChallengeScreen({ navigation }) {
     {
       id: 2,
       level: "Medium",
-      tagline: "🎯 Build momentum with steady focus.",
+      tagline: "Build momentum with steady focus.",
       hours: 4,
       reward: 40,
       icon: require("../../assets/walking.png"),
@@ -69,7 +69,7 @@ export default function ChallengeScreen({ navigation }) {
     {
       id: 3,
       level: "Hard",
-      tagline: "🎯 Push your limits and stay committed.",
+      tagline: "Push your limits and stay committed.",
       hours: 8,
       reward: 80,
       icon: require("../../assets/running.png"),
@@ -79,7 +79,7 @@ export default function ChallengeScreen({ navigation }) {
     {
       id: 4,
       level: "Challenging",
-      tagline: "🎯 Test your discipline and go further.",
+      tagline: "Test your discipline and go further.",
       hours: 24,
       reward: 240,
       icon: require("../../assets/trekking.png"),
@@ -89,7 +89,7 @@ export default function ChallengeScreen({ navigation }) {
     {
       id: 5,
       level: "Legendary",
-      tagline: "🎯Conquer distractions. Reach the peak.",
+      tagline: "Conquer distractions. Reach the peak.",
       hours: 48,
       reward: 480,
       icon: require("../../assets/summit.png"),
