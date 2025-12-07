@@ -89,6 +89,41 @@ router.get("/today", authMiddleware, async (req, res) => {
   }
 });
 
+router.get("/weekly", authMiddleware, async (req, res) => {
+  try {
+    const today = dayjs();
+    const startOfWeek = today.startOf("week"); 
+    const endOfWeek = today.endOf("week");
+
+    const logs = await Usage.find({
+      userId: req.user.id,
+      date: { $gte: startOfWeek.format("YYYY-MM-DD"), $lte: endOfWeek.format("YYYY-MM-DD") },
+    });
+
+    const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    const days = dayNames.map((dayLabel, i) => {
+      const dayDate = startOfWeek.add(i, "day").format("YYYY-MM-DD");
+      const entry = logs.find((l) => l.date === dayDate);
+
+      if (!entry)
+        return { day: dayLabel, minutes: 0, percent: 0 };
+
+      const minutes = parseInt(entry.totalTime.replace("m", "")) || 0;
+
+      const percent = Math.min(Math.floor((minutes / 180) * 100), 100);
+
+      return { day: dayLabel, minutes, percent };
+    });
+
+    return res.json({ days });
+
+  } catch (err) {
+    console.error("GET /usage/weekly error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.post("/log", authMiddleware, async (req, res) => {
   try {
     const { apps, totalTime } = req.body;
