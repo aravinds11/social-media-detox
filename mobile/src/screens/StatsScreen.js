@@ -42,15 +42,26 @@ export default function StatsScreen({ navigation }) {
 
       setWeekly(weekRes.data.days || []);
 
-      const score = aiRes.data.probability
-        ? Math.round(aiRes.data.probability * 100)
-        : 0;
+      const prob = aiRes.data?.probability ?? 0;
+      setAddictionScore(Math.round(prob * 100));
 
-      setAddictionScore(score);
+      const cl = aiRes.data?.cluster_label;
 
-      const cl = aiRes.data.cluster_label;
-      setTrend(cl ? `Your usage is ${cl}` : "No trend available");
-    } catch (e) {}
+      if (!cl) {
+        setTrend("No trend available");
+      } else if (cl === "light") {
+        setTrend("Your usage is healthy (light)");
+      } else if (cl === "moderate") {
+        setTrend("Your usage is moderate — room for improvement");
+      } else if (cl === "heavy") {
+        setTrend("Your usage is high — consider reducing screen time");
+      } else {
+        setTrend("No trend available");
+      }
+
+    } catch (e) {
+      console.log("Stats fetch error", e.message);
+    }
 
     setLoading(false);
   }
@@ -74,6 +85,7 @@ export default function StatsScreen({ navigation }) {
           <Text style={styles.subtitle}>Analytics • Insights • Trends</Text>
         </View>
 
+        {/* AI Insights */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>AI Insights</Text>
           <View style={styles.row}>
@@ -97,6 +109,7 @@ export default function StatsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* WEEKLY USAGE */}
         <View style={[styles.card, { marginTop: 20 }]}>
           <Text style={styles.cardTitle}>Weekly Usage</Text>
 
@@ -135,11 +148,7 @@ const styles = StyleSheet.create({
   loadingText: { color: COLORS.accentText, marginTop: 10 },
 
   header: { alignItems: "center", marginBottom: 18 },
-  title: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: COLORS.accentText,
-  },
+  title: { fontSize: 36, fontWeight: "800", color: COLORS.accentText },
   subtitle: { fontSize: 18, color: COLORS.muted },
 
   card: {
