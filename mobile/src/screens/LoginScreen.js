@@ -35,6 +35,7 @@ export default function LoginScreen({ navigation }) {
       }
 
       await AsyncStorage.setItem("token", token);
+      // console.log("JWT TOKEN:", token);
       await AsyncStorage.setItem("fullName", name || "");
       if (userEmail) await AsyncStorage.setItem("email", userEmail);
       await AsyncStorage.setItem("streak", (streak ?? 0).toString());
