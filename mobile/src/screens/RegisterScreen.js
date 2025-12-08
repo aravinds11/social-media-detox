@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,11 @@ import {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../api/api";
+import { AuthContext } from "../context/AuthContext";
 
 export default function RegisterScreen({ navigation }) {
+  const { login } = useContext(AuthContext);
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,11 +52,12 @@ export default function RegisterScreen({ navigation }) {
         return;
       }
 
-      await AsyncStorage.setItem("token", token);
       await AsyncStorage.setItem("fullName", user.name || fullName);
       if (user.email) await AsyncStorage.setItem("email", user.email);
 
-      navigation.replace("Dashboard");
+      // Persistent login via AuthContext
+      await login(token);
+
     } catch (error) {
       console.log("Register error:", error?.response?.data || error.message);
 
@@ -75,6 +79,7 @@ export default function RegisterScreen({ navigation }) {
       <View style={styles.card}>
         <Text style={styles.title}>Create Account</Text>
 
+        {/* Full Name */}
         <TextInput
           style={styles.input}
           placeholder="Full Name"
@@ -83,6 +88,7 @@ export default function RegisterScreen({ navigation }) {
           onChangeText={setFullName}
         />
 
+        {/* Email */}
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -93,6 +99,7 @@ export default function RegisterScreen({ navigation }) {
           keyboardType="email-address"
         />
 
+        {/* Password */}
         <View style={styles.passwordWrapper}>
           <TextInput
             style={[styles.input, { flex: 1, marginBottom: 0 }]}
@@ -118,6 +125,7 @@ export default function RegisterScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Confirm Password */}
         <View style={styles.passwordWrapper}>
           <TextInput
             style={[styles.input, { flex: 1, marginBottom: 0 }]}
@@ -145,6 +153,7 @@ export default function RegisterScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Register Button */}
         <TouchableOpacity
           style={styles.registerButton}
           onPress={handleRegister}
