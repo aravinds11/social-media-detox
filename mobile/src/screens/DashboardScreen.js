@@ -34,6 +34,8 @@ const ICONS = {
   "com.twitter.android": require("../../assets/x.png"),
 };
 
+const DEFAULT_ICON = require("../../assets/default_app.png");
+
 export default function DashboardScreen({ navigation, route }) {
   const nameFromRoute = route?.params?.username || "User";
 
@@ -63,7 +65,8 @@ export default function DashboardScreen({ navigation, route }) {
       if (apps.length > 0) {
         const mapped = apps.map((a) => ({
           ...a,
-          icon: ICONS[a.id] || require("../../assets/default_app.png"),
+          icon: ICONS[a.id] || DEFAULT_ICON,
+          pct: typeof a.pct === "number" ? a.pct : 0,
         }));
         setUsageData(mapped);
         animateApps(mapped);
@@ -75,15 +78,18 @@ export default function DashboardScreen({ navigation, route }) {
 
   async function fetchAppsFromBackend() {
     try {
-      const usageRes = await api.get("/usage/apps");
-      const stored = usageRes.data.apps || [];
+      const res = await api.get("/usage/apps");
+      const stored = res.data.apps || [];
+
       const mapped = stored.map((a) => ({
         ...a,
-        icon: ICONS[a.id] || require("../../assets/default_app.png"),
+        icon: ICONS[a.id] || DEFAULT_ICON,
+        pct: typeof a.pct === "number" ? a.pct : 0,
       }));
+
       setUsageData(mapped);
       animateApps(mapped);
-    } catch (err) {}
+    } catch {}
   }
 
   async function fetchDashboardData() {
@@ -93,23 +99,26 @@ export default function DashboardScreen({ navigation, route }) {
       setCoins(progressRes.data.coins ?? 0);
       setUsername(progressRes.data.name || nameFromRoute);
       setLoading(false);
-    } catch (err) {
+    } catch {
       setLoading(false);
     }
   }
 
   function animateApps(apps) {
     anims.length = apps.length;
+
     apps.forEach((_, i) => (anims[i] = new Animated.Value(0)));
+
     const animations = apps.map((app, i) =>
       Animated.timing(anims[i], {
-        toValue: app.pct ?? 0,
-        duration: 700,
-        delay: 150 * i,
+        toValue: app.pct,
+        duration: 600,
+        delay: 80 * i,
         useNativeDriver: false,
       })
     );
-    Animated.stagger(100, animations).start();
+
+    Animated.stagger(80, animations).start();
   }
 
   if (loading || usageLoading) {
@@ -125,7 +134,10 @@ export default function DashboardScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Welcome Back, {username}</Text>
           <Text style={styles.subtitle}>Stay focused, stay healthy.</Text>
@@ -160,48 +172,28 @@ export default function DashboardScreen({ navigation, route }) {
         </View>
 
         <View style={styles.actionsRow}>
-          <DashboardButton
-            label="Start Timer"
-            icon={require("../../assets/timer.png")}
-            onPress={() => navigation?.navigate?.("Timer")}
-          />
-          <DashboardButton
-            label="Challenge"
-            icon={require("../../assets/challenge.png")}
-            onPress={() => navigation?.navigate?.("Challenge")}
-          />
-          <DashboardButton
-            label="Stats"
-            icon={require("../../assets/stats.png")}
-            onPress={() => navigation?.navigate?.("Stats")}
-          />
-          <DashboardButton
-            label="Profile"
-            icon={require("../../assets/profile.png")}
-            onPress={() => navigation?.navigate?.("Profile")}
-          />
+          <DashboardButton label="Start Timer" icon={require("../../assets/timer.png")} onPress={() => navigation.navigate("Timer")} />
+          <DashboardButton label="Challenge" icon={require("../../assets/challenge.png")} onPress={() => navigation.navigate("Challenge")} />
+          <DashboardButton label="Stats" icon={require("../../assets/stats.png")} onPress={() => navigation.navigate("Stats")} />
+          <DashboardButton label="Profile" icon={require("../../assets/profile.png")} onPress={() => navigation.navigate("Profile")} />
         </View>
 
         <View style={[styles.card, { marginTop: 18 }]}>
           <Text style={styles.cardTitle}>Today’s Social Media Usage</Text>
 
           {!hasPermission && (
-            <Text style={styles.noDataText}>
-              Usage Access permission not granted.
-            </Text>
+            <Text style={styles.noDataText}>Usage Access permission not granted.</Text>
           )}
 
           {usageData.length === 0 && hasPermission && (
-            <Text style={styles.noDataText}>No app usage detected today.</Text>
+            <Text style={styles.noDataText}>No social media usage detected today.</Text>
           )}
 
           {usageData.map((row, i) => (
-            <View key={row.id} style={styles.usageRow}>
+            <View key={row.id + i} style={styles.usageRow}>
               <View style={styles.usageLeft}>
                 <Image source={row.icon} style={styles.appIcon} />
-                <View style={styles.timeBlock}>
-                  <Text style={styles.usageTime}>{row.time}</Text>
-                </View>
+                <Text style={styles.usageTime}>{row.time}</Text>
               </View>
 
               <View style={styles.usageRight}>
@@ -215,7 +207,7 @@ export default function DashboardScreen({ navigation, route }) {
                               inputRange: [0, 1],
                               outputRange: ["0%", "100%"],
                             })
-                          : `${(row.pct || 0) * 100}%`,
+                          : "0%",
                       },
                     ]}
                   />
@@ -225,7 +217,7 @@ export default function DashboardScreen({ navigation, route }) {
           ))}
         </View>
 
-        <View style={styles.bottomSpace} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -245,64 +237,29 @@ const CARD_RADIUS = 18;
 const BTN_SIZE = (width - PAD * 2 - 48) / 4;
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    marginTop: 12,
-    color: COLORS.accentText,
-  },
-  container: {
-    padding: PAD,
-    paddingTop: 36,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: COLORS.accentText,
-  },
-  subtitle: {
-    marginTop: 6,
-    fontSize: 18,
-    color: COLORS.muted,
-    fontWeight: "500",
-  },
+  safe: { flex: 1, backgroundColor: COLORS.bg },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 12, color: COLORS.accentText },
+  container: { padding: PAD, paddingTop: 36 },
+
+  header: { alignItems: "center", marginBottom: 18 },
+  title: { fontSize: 36, fontWeight: "800", color: COLORS.accentText },
+  subtitle: { marginTop: 6, fontSize: 18, color: COLORS.muted },
+
   card: {
     backgroundColor: COLORS.card,
     borderRadius: CARD_RADIUS,
     padding: 18,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
     shadowRadius: 20,
     elevation: 3,
   },
-  cardTitle: {
-    color: COLORS.primaryGreen,
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 10,
-  },
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  progressItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
+  cardTitle: { color: COLORS.primaryGreen, fontSize: 20, fontWeight: "800", marginBottom: 10 },
+
+  progressRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  progressItem: { flexDirection: "row", alignItems: "center", flex: 1 },
+
   iconCircle: {
     width: 56,
     height: 56,
@@ -311,29 +268,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconImageGreen: {
-    width: 64,
-    height: 64,
-  },
-  progressLabelBlock: {
-    marginLeft: 12,
-  },
-  bigNumber: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: COLORS.accentText,
-  },
-  smallText: {
-    fontSize: 14,
-    color: COLORS.muted,
-    fontWeight: "500",
-  },
-  divider: {
-    width: 1,
-    height: 64,
-    backgroundColor: "#eef3f4",
-    marginHorizontal: 18,
-  },
+  iconImageGreen: { width: 64, height: 64 },
+
+  progressLabelBlock: { marginLeft: 12 },
+  bigNumber: { fontSize: 26, fontWeight: "800", color: COLORS.accentText },
+  smallText: { fontSize: 14, color: COLORS.muted },
+
+  divider: { width: 1, height: 64, backgroundColor: "#eef3f4", marginHorizontal: 18 },
+
   actionsRow: {
     marginTop: 18,
     flexDirection: "row",
@@ -360,38 +302,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
   },
-  noDataText: {
-    color: COLORS.muted,
-    textAlign: "center",
-    paddingVertical: 10,
-  },
+
+  noDataText: { color: COLORS.muted, textAlign: "center", paddingVertical: 10 },
+
   usageRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
   },
-  usageLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: 140,
-  },
-  appIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-  },
-  timeBlock: {
-    marginLeft: 12,
-  },
-  usageTime: {
-    fontWeight: "800",
-    color: COLORS.accentText,
-    fontSize: 16,
-  },
-  usageRight: {
-    flex: 1,
-    paddingLeft: 12,
-  },
+  usageLeft: { flexDirection: "row", alignItems: "center", width: 140 },
+  appIcon: { width: 36, height: 36, borderRadius: 8 },
+  usageTime: { marginLeft: 12, fontSize: 16, fontWeight: "800", color: COLORS.accentText },
+
+  usageRight: { flex: 1, paddingLeft: 12 },
   progressTrack: {
     height: 16,
     backgroundColor: COLORS.progressTrack,
@@ -403,7 +326,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryGreen,
     borderRadius: 12,
   },
-  bottomSpace: {
-    height: 40,
-  },
+
+  bottomSpace: { height: 40 },
 });
