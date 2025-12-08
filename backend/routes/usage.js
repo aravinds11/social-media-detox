@@ -205,3 +205,4 @@ router.post("/log", authMiddleware, async (req, res) => {
 });
 
 export default router;
+
