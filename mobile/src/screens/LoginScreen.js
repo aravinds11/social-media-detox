@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -8,10 +8,14 @@ import {
   Image,
   Alert,
 } from "react-native";
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../api/api";
+import { AuthContext } from "../context/AuthContext";
 
 export default function LoginScreen({ navigation }) {
+  const { login } = useContext(AuthContext);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -30,23 +34,15 @@ export default function LoginScreen({ navigation }) {
 
       const { token, name, email: userEmail, streak, coins } = response.data;
 
-      if (!token) {
-        throw new Error("No token returned from server");
-      }
+      if (!token) throw new Error("No token returned from server");
 
-      await AsyncStorage.setItem("token", token);
-      // console.log("JWT TOKEN:", token);
       await AsyncStorage.setItem("fullName", name || "");
       if (userEmail) await AsyncStorage.setItem("email", userEmail);
       await AsyncStorage.setItem("streak", (streak ?? 0).toString());
       await AsyncStorage.setItem("coins", (coins ?? 0).toString());
 
-      navigation.replace("Dashboard");
+      await login(token);
     } catch (error) {
-      console.log(
-        "LOGIN ERROR RAW:",
-        error?.response?.data ?? error?.response ?? error.message
-      );
       Alert.alert(
         "Login Failed",
         error?.response?.data?.message || "Invalid email or password."
@@ -125,7 +121,10 @@ export default function LoginScreen({ navigation }) {
 
         <Text style={styles.footerText}>
           Don’t have an account?{" "}
-          <Text style={styles.footerLink} onPress={() => navigation.navigate("Register")}>
+          <Text
+            style={styles.footerLink}
+            onPress={() => navigation.navigate("Register")}
+          >
             Register
           </Text>
         </Text>
