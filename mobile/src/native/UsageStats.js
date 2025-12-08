@@ -1,5 +1,4 @@
 import { NativeModules } from "react-native";
-
 const { UsageStats } = NativeModules;
 
 export default {
@@ -8,4 +7,5 @@ export default {
   hasLaunchEvents: (start, end) => UsageStats.hasLaunchEvents(start, end),
   getTrackedApps: () => UsageStats.getTrackedApps(),
   getPerAppUsage: (start, end) => UsageStats.getPerAppUsage(start, end),
+  getDailyMetrics: (start, end) => UsageStats.getDailyMetrics(start, end)
 };
