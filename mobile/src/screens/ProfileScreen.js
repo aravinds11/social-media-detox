@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../api/api";
+import { AuthContext } from "../context/AuthContext";
 
 const COLORS = {
   bg: "#dff3ff",
@@ -22,6 +23,8 @@ const COLORS = {
 };
 
 export default function ProfileScreen({ navigation }) {
+  const { logout } = useContext(AuthContext);
+
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,37 +41,44 @@ export default function ProfileScreen({ navigation }) {
     setLoading(true);
     try {
       const res = await api.get("/user/progress");
+
       setName(res.data.name || "");
       setEmail(res.data.email || "");
       setStreak(res.data.streak ?? 0);
       setCoins(res.data.coins ?? 0);
+
+      await AsyncStorage.setItem("fullName", res.data.name || "");
+      await AsyncStorage.setItem("email", res.data.email || "");
+
     } catch (e) {
       console.log("Profile load error", e);
-      // fallback to locally stored values if available
+
       try {
         const localName = await AsyncStorage.getItem("fullName");
         const localEmail = await AsyncStorage.getItem("email");
         const localStreak = await AsyncStorage.getItem("streak");
         const localCoins = await AsyncStorage.getItem("coins");
+
         if (localName) setName(localName);
         if (localEmail) setEmail(localEmail);
         if (localStreak) setStreak(parseInt(localStreak, 10));
         if (localCoins) setCoins(parseInt(localCoins, 10));
-      } catch (e2) {}
+      } catch {}
     } finally {
       setLoading(false);
     }
   }
 
-  async function logout() {
-    await AsyncStorage.removeItem("token");
-    navigation.reset({ index: 0, routes: [{ name: "Login" }] });
-  }
-
-  async function confirmLogout() {
+  function confirmLogout() {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: logout },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+        },
+      },
     ]);
   }
 
@@ -161,11 +171,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statIcon: { width: 40, height: 40, marginBottom: 8 },
-  statNumber: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: COLORS.accent,
-  },
+  statNumber: { fontSize: 26, fontWeight: "800", color: COLORS.accent },
   statLabel: { fontSize: 14, color: COLORS.muted },
 
   menu: {
