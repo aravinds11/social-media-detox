@@ -30,6 +30,9 @@ export default function LoginScreen({ navigation }) {
     try {
       setLoading(true);
 
+      // console.log("API:", api.defaults.baseURL);
+      // Alert.alert("API URL", api.defaults.baseURL || "undefined");
+
       const response = await api.post("/auth/login", { email, password });
 
       const { token, name, email: userEmail, streak, coins } = response.data;
@@ -43,9 +46,13 @@ export default function LoginScreen({ navigation }) {
 
       await login(token);
     } catch (error) {
+      console.log("LOGIN ERROR - MESSAGE:", error.message);
+      console.log("LOGIN ERROR - TO_JSON:", error.toJSON?.());
+      console.log("LOGIN ERROR - CONFIG:", error.config);
+      console.log("LOGIN ERROR - RESPONSE:", error.response);
       Alert.alert(
         "Login Failed",
-        error?.response?.data?.message || "Invalid email or password."
+        error?.response?.data?.message || error.message || "Network error"
       );
     } finally {
       setLoading(false);
