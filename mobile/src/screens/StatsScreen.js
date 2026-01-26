@@ -12,8 +12,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../api/api";
 
-const { width } = Dimensions.get("window");
-
 const COLORS = {
   bg: "#dff3ff",
   card: "#ffffff",
@@ -26,6 +24,7 @@ const COLORS = {
 export default function StatsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [weekly, setWeekly] = useState([]);
+  const [metrics, setMetrics] = useState(null);
   const [addictionScore, setAddictionScore] = useState(0);
   const [trend, setTrend] = useState("No trend available");
 
@@ -46,22 +45,14 @@ export default function StatsScreen({ navigation }) {
       setAddictionScore(Math.round(prob * 100));
 
       const cl = aiRes.data?.cluster_label;
+      if (cl === "light") setTrend("Your usage is healthy (light)");
+      else if (cl === "moderate") setTrend("Moderate usage — room for improvement");
+      else if (cl === "heavy") setTrend("High usage — consider reducing screen time");
+      else setTrend("No trend available");
 
-      if (!cl) {
-        setTrend("No trend available");
-      } else if (cl === "light") {
-        setTrend("Your usage is healthy (light)");
-      } else if (cl === "moderate") {
-        setTrend("Your usage is moderate — room for improvement");
-      } else if (cl === "heavy") {
-        setTrend("Your usage is high — consider reducing screen time");
-      } else {
-        setTrend("No trend available");
-      }
-
-    } catch (e) {
-      console.log("Stats fetch error", e.message);
-    }
+      const metricsRes = await api.get("/usage/todayMetrics");
+      setMetrics(metricsRes.data || null);
+    } catch (e) {}
 
     setLoading(false);
   }
@@ -80,19 +71,17 @@ export default function StatsScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
+
         <View style={styles.header}>
           <Text style={styles.title}>Your Stats</Text>
           <Text style={styles.subtitle}>Analytics • Insights • Trends</Text>
         </View>
 
-        {/* AI Insights */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>AI Insights</Text>
+
           <View style={styles.row}>
-            <Image
-              source={require("../../assets/stats.png")}
-              style={styles.icon}
-            />
+            <Image source={require("../../assets/stats.png")} style={styles.icon} />
             <View style={{ marginLeft: 12 }}>
               <Text style={styles.bigNumber}>{addictionScore}/100</Text>
               <Text style={styles.smallText}>Addiction Score</Text>
@@ -109,7 +98,21 @@ export default function StatsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* WEEKLY USAGE */}
+        <View style={[styles.card, { marginTop: 20 }]}>
+          <Text style={styles.cardTitle}>Today’s Behavior Metrics</Text>
+
+          {metrics ? (
+            <>
+              <MetricRow label="Daily Screen Time" value={`${metrics.daily_screen_time}m`} />
+              <MetricRow label="Avg Session Duration" value={`${metrics.session_duration}m`} />
+              <MetricRow label="App Switches" value={metrics.app_switches} />
+              <MetricRow label="Night Activity" value={`${metrics.night_activity}m`} />
+            </>
+          ) : (
+            <Text style={styles.noData}>No metrics available.</Text>
+          )}
+        </View>
+
         <View style={[styles.card, { marginTop: 20 }]}>
           <Text style={styles.cardTitle}>Weekly Usage</Text>
 
@@ -119,14 +122,19 @@ export default function StatsScreen({ navigation }) {
             weekly.map((d, i) => (
               <View key={i} style={styles.weekRow}>
                 <Text style={styles.weekDay}>{d.day}</Text>
+
                 <View style={styles.weekBarTrack}>
                   <View
                     style={[
                       styles.weekBarFill,
-                      { width: `${d.percent || 0}%` },
+                      { width: `${d.percent}%`,
+                        backgroundColor: d.percent > 60 ? "#e86a52" :
+                                         d.percent > 30 ? "#f2b45d" :
+                                         COLORS.primaryGreen }
                     ]}
                   />
                 </View>
+
                 <Text style={styles.weekMinutes}>{d.minutes}m</Text>
               </View>
             ))
@@ -136,6 +144,15 @@ export default function StatsScreen({ navigation }) {
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function MetricRow({ label, value }) {
+  return (
+    <View style={styles.metricRow}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
+    </View>
   );
 }
 
@@ -171,7 +188,6 @@ const styles = StyleSheet.create({
   icon: { width: 50, height: 50 },
   bigNumber: { fontSize: 32, fontWeight: "800", color: COLORS.accentText },
   smallText: { color: COLORS.muted, fontSize: 16 },
-
   trendText: { marginTop: 10, color: COLORS.accentText, fontSize: 16 },
 
   aiBtn: {
@@ -183,12 +199,21 @@ const styles = StyleSheet.create({
   },
   aiBtnLabel: { fontSize: 16, color: "#fff", fontWeight: "700" },
 
+  metricRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+  },
+  metricLabel: { color: COLORS.accentText },
+  metricValue: { color: COLORS.primaryGreen, fontWeight: "700" },
+
   weekRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 10,
   },
   weekDay: { width: 62, fontWeight: "700", color: COLORS.accentText },
+
   weekBarTrack: {
     flex: 1,
     height: 16,
@@ -198,7 +223,6 @@ const styles = StyleSheet.create({
   },
   weekBarFill: {
     height: "100%",
-    backgroundColor: COLORS.primaryGreen,
     borderRadius: 10,
   },
   weekMinutes: {
@@ -206,5 +230,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
     color: COLORS.accentText,
   },
+
   noData: { textAlign: "center", color: COLORS.muted, paddingVertical: 10 },
 });

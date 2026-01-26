@@ -47,6 +47,12 @@ function computeFeaturesFromApps(apps, totalTimeStr) {
   ];
 }
 
+function validateMetricsObj(metrics) {
+  if (!metrics) return false;
+  const keys = ["daily_screen_time", "session_duration", "app_switches", "night_activity"];
+  return keys.every(k => typeof metrics[k] === "number" && !isNaN(metrics[k]));
+}
+
 router.get("/apps", authMiddleware, async (req, res) => {
   try {
     const today = dayjs().format("YYYY-MM-DD");
@@ -92,7 +98,7 @@ router.get("/today", authMiddleware, async (req, res) => {
 router.get("/weekly", authMiddleware, async (req, res) => {
   try {
     const today = dayjs();
-    const startOfWeek = today.startOf("week"); 
+    const startOfWeek = today.startOf("week");
     const endOfWeek = today.endOf("week");
 
     const logs = await Usage.find({
@@ -109,8 +115,7 @@ router.get("/weekly", authMiddleware, async (req, res) => {
       if (!entry)
         return { day: dayLabel, minutes: 0, percent: 0 };
 
-      const minutes = parseInt(entry.totalTime.replace("m", "")) || 0;
-
+      const minutes = parseInt((entry.totalTime || "0m").replace("m", "")) || 0;
       const percent = Math.min(Math.floor((minutes / 180) * 100), 100);
 
       return { day: dayLabel, minutes, percent };
@@ -126,7 +131,7 @@ router.get("/weekly", authMiddleware, async (req, res) => {
 
 router.post("/log", authMiddleware, async (req, res) => {
   try {
-    const { apps, totalTime } = req.body;
+    const { apps, totalTime, metrics } = req.body;
 
     if (!apps || !Array.isArray(apps)) {
       return res.status(400).json({ message: "Invalid apps array" });
@@ -151,9 +156,28 @@ router.post("/log", authMiddleware, async (req, res) => {
       usage.totalTime = totalTime;
     }
 
+    if (validateMetricsObj(metrics)) {
+      usage.metrics = {
+        daily_screen_time: metrics.daily_screen_time,
+        session_duration: metrics.session_duration,
+        app_switches: metrics.app_switches,
+        night_activity: metrics.night_activity
+      };
+    }
+
     await usage.save();
 
-    const features = computeFeaturesFromApps(apps, totalTime);
+    let features;
+    if (validateMetricsObj(metrics)) {
+      features = [
+        metrics.daily_screen_time,
+        metrics.session_duration,
+        metrics.app_switches,
+        metrics.night_activity
+      ];
+    } else {
+      features = computeFeaturesFromApps(apps, totalTime);
+    }
 
     try {
       const flaskRes = await axios.post(`${FLASK_URL}/analyze`, { usage: features });

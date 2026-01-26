@@ -24,10 +24,17 @@ export default function useUsageStats({ autoUpload = true } = {}) {
     start.setHours(0, 0, 0, 0);
 
     let nativeApps = [];
+    let metrics = null;
 
     try {
       nativeApps = await UsageStats.getPerAppUsage(start.getTime(), now);
-    } catch (e) {}
+    } catch {}
+
+    try {
+      metrics = await UsageStats.getDailyMetrics(start.getTime(), now);
+    } catch {
+      metrics = null;
+    }
 
     if (nativeApps && nativeApps.length > 0) {
       const formatted = nativeApps.map((a) => ({
@@ -43,19 +50,31 @@ export default function useUsageStats({ autoUpload = true } = {}) {
 
       if (autoUpload && formatted.length > 0) {
         const totalMinutes = formatted.reduce((s, a) => s + a.minutes, 0);
+        const body = {
+          totalTime: `${totalMinutes}m`,
+          apps: formatted,
+        };
+
+        if (
+          metrics &&
+          typeof metrics.daily_screen_time === "number" &&
+          typeof metrics.session_duration === "number" &&
+          typeof metrics.app_switches === "number" &&
+          typeof metrics.night_activity === "number"
+        ) {
+          body.metrics = metrics;
+        }
+
         try {
-          await api.post("/usage/log", {
-            totalTime: `${totalMinutes}m`,
-            apps: formatted,
-          });
-        } catch (e) {}
+          await api.post("/usage/log", body);
+        } catch {}
       }
     } else {
       try {
         const backendRes = await api.get("/usage/apps");
         const stored = backendRes.data.apps || [];
         setApps(stored);
-      } catch (e) {}
+      } catch {}
     }
 
     setLoading(false);
